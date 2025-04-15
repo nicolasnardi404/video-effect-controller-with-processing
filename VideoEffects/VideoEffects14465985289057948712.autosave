@@ -1,0 +1,236 @@
+import processing.video.*;
+import processing.sound.*;
+
+// Camera and effects
+Capture cam;
+AudioIn audioInput;
+SoundRecorder recorder;
+boolean isRecording = false;
+String audioFilename;
+int frameRate = 30;
+int currentEffect = 0;
+float rotationSpeed = 0.5;
+float colorSpeed = 1.0;
+float zoom = 0;
+boolean ghostEffect = false;
+
+// 3D parameters
+float theta = 0;
+ArrayList<Particle3D> particles;
+
+// Control parameters
+float sizeMultiplier = 1.0;
+float colorIntensity = 1.0;
+float brightnessMod = 1.0;
+float distortAmount = 0.0;
+
+// Mouse control
+float rotationX = 0;
+float rotationY = 0;
+float targetRotX = 0;
+float targetRotY = 0;
+boolean mouseControl = true;
+PVector moveOffset = new PVector(0, 0, 0);
+
+void setup() {
+  size(800, 600, P3D);
+  colorMode(HSB, 360, 100, 100);
+  frameRate(frameRate);
+  
+  // Initialize camera
+  String[] cameras = Capture.list();
+  if (cameras.length > 0) {
+    cam = new Capture(this, 640, 480, cameras[0]);
+    cam.start();
+  }
+  
+  // Initialize audio input and recorder
+  audioInput = new AudioIn(this, 0);
+  audioInput.start();
+  recorder = new SoundRecorder(this);
+  recorder.setInput(audioInput);
+  
+  // Create output directory if it doesn't exist
+  File outputDir = new File(sketchPath("output"));
+  if (!outputDir.exists()) {
+    outputDir.mkdir();
+  }
+  
+  // Initialize effects
+  initializeEffects();
+}
+
+void draw() {
+  // Clear with ghost effect if enabled
+  if (ghostEffect) {
+    fill(0, 20);
+    noStroke();
+    rect(0, 0, width, height);
+  } else {
+    background(0);
+  }
+  
+  // Update webcam
+  if (cam != null && cam.available()) {
+    cam.read();
+  }
+  
+  updateMouseControl();
+  updateCamera();
+  drawCurrentEffect();
+  drawControls();
+  
+  // Handle recording
+  if (isRecording) {
+    // Save frame with timestamp
+    saveFrame("output/frame-######.png");
+    // Draw recording indicator
+    fill(#FF0000);
+    noStroke();
+    ellipse(width - 20, 20, 10, 10);
+  }
+}
+
+void updateMouseControl() {
+  if (mouseControl && mousePressed) {
+    if (mouseButton == LEFT) {
+      targetRotY += (mouseX - pmouseX) * 0.01;
+      targetRotX += (mouseY - pmouseY) * 0.01;
+    } else if (mouseButton == RIGHT) {
+      moveOffset.x += (mouseX - pmouseX);
+      moveOffset.y += (mouseY - pmouseY);
+    }
+  }
+  
+  // Smooth rotation
+  rotationX += (targetRotX - rotationX) * 0.1;
+  rotationY += (targetRotY - rotationY) * 0.1;
+}
+
+void updateCamera() {
+  if (cam != null) {
+    translate(width/2 + moveOffset.x, height/2 + moveOffset.y, zoom + moveOffset.z);
+    rotateX(rotationX);
+    rotateY(rotationY);
+    theta += 0.02 * rotationSpeed;
+  }
+}
+
+// Initialize all effects and parameters
+void initializeEffects() {
+  // Initialize particle system
+  initializeParticles();
+  
+  // Reset control parameters
+  sizeMultiplier = 1.0;
+  colorIntensity = 1.0;
+  brightnessMod = 1.0;
+  distortAmount = 0.0;
+  
+  // Reset view parameters
+  rotationX = 0;
+  rotationY = 0;
+  targetRotX = 0;
+  targetRotY = 0;
+  moveOffset = new PVector(0, 0, 0);
+  
+  // Reset effect parameters
+  theta = 0;
+  zoom = 0;
+  rotationSpeed = 0.5;
+  colorSpeed = 1.0;
+  ghostEffect = false;
+  currentEffect = 0;
+}
+
+void drawCurrentEffect() {
+  if (cam != null) {
+    switch(currentEffect) {
+      case 0: drawTunnelEffect(); break;
+      case 1: drawSphericalEffect(); break;
+      case 2: drawParticleEffect(); break;
+      case 3: drawVortexEffect(); break;
+      case 4: drawCubeEffect(); break;
+    }
+  }
+}
+
+void keyPressed() {
+  switch(key) {
+    case ' ':
+      currentEffect = (currentEffect + 1) % 5;
+      break;
+    case 'g':
+    case 'G':
+      ghostEffect = !ghostEffect;
+      break;
+    case 'z':
+    case 'Z':
+      zoom += 50;
+      break;
+    case 'x':
+    case 'X':
+      zoom -= 50;
+      break;
+    case 's':
+    case 'S':
+      sizeMultiplier = constrain(sizeMultiplier + 0.1, 0.1, 3);
+      break;
+    case 'd':
+    case 'D':
+      sizeMultiplier = constrain(sizeMultiplier - 0.1, 0.1, 3);
+      break;
+    case 'c':
+    case 'C':
+      colorIntensity = constrain(colorIntensity + 0.1, 0.1, 2);
+      break;
+    case 'v':
+    case 'V':
+      colorIntensity = constrain(colorIntensity - 0.1, 0.1, 2);
+      break;
+    case 'b':
+    case 'B':
+      distortAmount = constrain(distortAmount + 0.1, 0, 1);
+      break;
+    case 'n':
+    case 'N':
+      distortAmount = constrain(distortAmount - 0.1, 0, 1);
+      break;
+    case 'm':
+    case 'M':
+      mouseControl = !mouseControl;
+      break;
+    case 'r':
+    case 'R':
+      isRecording = !isRecording;
+      if (isRecording) {
+        println("Started recording...");
+        // Start audio recording with timestamp
+        audioFilename = "output/audio-" + timestamp() + ".wav";
+        recorder.beginRecord(audioFilename);
+      } else {
+        println("Stopped recording. Files saved in output folder.");
+        recorder.endRecord();
+        println("Audio saved as: " + audioFilename);
+      }
+      break;
+  }
+  
+  if (keyCode == UP) {
+    rotationSpeed = min(rotationSpeed + 0.1, 3);
+  }
+  else if (keyCode == DOWN) {
+    rotationSpeed = max(rotationSpeed - 0.1, 0);
+  }
+  else if (keyCode == RIGHT) {
+    colorSpeed = min(colorSpeed + 0.1, 3);
+  }
+  else if (keyCode == LEFT) {
+    colorSpeed = max(colorSpeed - 0.1, 0);
+  }
+}
+
+// Helper function to generate timestamp
+String timestamp() {
+  return String.format("%d", System.currentTimeMillis());
+} 

@@ -1,6 +1,57 @@
-# Processing Video Effects Suite
+# Video Effects Controller
 
-A powerful video effects application that combines Processing for visual effects with a Python-based control interface. This tool allows you to apply real-time visual effects to video files or camera input.
+A powerful video effects controller that allows you to create stunning visual effects with your camera or video files.
+
+## For Users
+
+### Windows Users
+1. Download the latest release from the releases page
+2. Extract the ZIP file
+3. Run `VideoEffectsController.exe`
+4. Make sure Processing is running with the corresponding sketch
+
+### Mac Users
+1. Download the latest release from the releases page
+2. Extract the ZIP file
+3. Run `VideoEffectsController.app`
+4. Make sure Processing is running with the corresponding sketch
+
+## For Developers
+
+### Setup Development Environment
+
+1. Clone the repository:
+```bash
+git clone [repository-url]
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Run the application:
+```bash
+python python/main.py
+```
+
+### Building the Executable
+
+#### Windows
+```bash
+pyinstaller --name VideoEffectsController --windowed --onefile python/main.py
+```
+
+#### Mac
+```bash
+pyinstaller --name VideoEffectsController --windowed --onefile python/main.py
+```
+
+### Dependencies
+- Python 3.8+
+- python-osc
+- tkinter (usually comes with Python)
+- Processing 4.0+ (for the visual effects)
 
 ## Features
 
@@ -28,47 +79,6 @@ A powerful video effects application that combines Processing for visual effects
   - RGB Shift
   - Noise amount
   - Polygon sides
-
-## Prerequisites
-
-- Processing 4.x
-- Python 3.12+
-- Tkinter (usually comes with Python)
-- Required Python packages (see `python/requirements.txt`)
-
-## Installation
-
-1. Clone this repository:
-```bash
-git clone [your-repo-url]
-cd processing-video-maker
-```
-
-2. Create and activate a Python virtual environment:
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
-
-3. Install Python dependencies:
-```bash
-pip install -r python/requirements.txt
-```
-
-4. Make sure Processing is installed on your system
-   - On macOS: Install Processing.app in the Applications folder
-   - On Windows: Install Processing in the default location
-
-## Usage
-
-1. Run the launcher:
-```bash
-python python/launcher.py
-```
-
-2. Click "Start" in the control panel to begin
-3. Use the various sliders and controls to adjust the visual effects
-4. Click "Stop" when finished
 
 ## Project Structure
 

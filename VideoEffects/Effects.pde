@@ -95,20 +95,67 @@ void drawVortexEffect() {
   popMatrix();
 }
 
-// Helper function to draw a polygon with variable sides
+// Helper function to draw a 3D polygon (prism) with variable sides and dynamic depth
 void drawPolygon(float size, float texX, float texY, float texWidth, float texHeight) {
+  float depth = size * 0.5; // Make depth proportional to size but slightly smaller
+  float angleStep = TWO_PI / polygonSides;
+  
+  // Draw front face with slight rotation for better 3D effect
+  pushMatrix();
+  rotateX(sin(theta * 0.5) * 0.2);
+  rotateY(cos(theta * 0.3) * 0.2);
+  
+  // Front face
   beginShape();
   texture(currentFrame);
-  float angleStep = TWO_PI / polygonSides;
   for (int i = 0; i < polygonSides; i++) {
     float angle = i * angleStep;
     float x = cos(angle) * size;
     float y = sin(angle) * size;
     float tx = map(i, 0, polygonSides, texX, texX + texWidth);
     float ty = map(i, 0, polygonSides, texY, texY + texHeight);
-    vertex(x, y, 0, tx, ty);
+    vertex(x, y, depth/2, tx, ty);
   }
   endShape(CLOSE);
+  
+  // Back face
+  beginShape();
+  texture(currentFrame);
+  for (int i = 0; i < polygonSides; i++) {
+    float angle = i * angleStep;
+    float x = cos(angle) * size;
+    float y = sin(angle) * size;
+    float tx = map(i, 0, polygonSides, texX + texWidth, texX);
+    float ty = map(i, 0, polygonSides, texY, texY + texHeight);
+    vertex(x, y, -depth/2, tx, ty);
+  }
+  endShape(CLOSE);
+  
+  // Draw side faces with dynamic texture mapping
+  for (int i = 0; i < polygonSides; i++) {
+    float angle1 = i * angleStep;
+    float angle2 = ((i + 1) % polygonSides) * angleStep;
+    float x1 = cos(angle1) * size;
+    float y1 = sin(angle1) * size;
+    float x2 = cos(angle2) * size;
+    float y2 = sin(angle2) * size;
+    
+    // Side face (using TRIANGLE_STRIP for better 3D rendering)
+    beginShape(TRIANGLE_STRIP);
+    texture(currentFrame);
+    
+    // First vertex pair
+    vertex(x1, y1, depth/2, texX + (texWidth * i/polygonSides), texY);
+    vertex(x1, y1, -depth/2, texX + (texWidth * i/polygonSides), texY + texHeight);
+    
+    // Second vertex pair
+    vertex(x2, y2, depth/2, texX + (texWidth * (i+1)/polygonSides), texY);
+    vertex(x2, y2, -depth/2, texX + (texWidth * (i+1)/polygonSides), texY + texHeight);
+    
+    endShape();
+  }
+  
+  popMatrix();
 }
 
 void drawCubeEffect() {
@@ -175,6 +222,7 @@ void drawWaveGridEffect() {
   int gridSize = 20;
   float cellSize = 40 * sizeMultiplier;
   float waveHeight = 100 * sizeMultiplier;
+  float cellDepth = 30 * sizeMultiplier; // Depth for 3D cells
   
   for (int x = -gridSize/2; x < gridSize/2; x++) {
     for (int z = -gridSize/2; z < gridSize/2; z++) {
@@ -186,16 +234,52 @@ void drawWaveGridEffect() {
       float y = sin(distance * 0.02 + theta) * waveHeight;
       
       translate(xPos, y, zPos);
+      rotateX(sin(distance * 0.01 + theta) * 0.2); // Add some wave rotation
+      rotateZ(cos(distance * 0.01 + theta) * 0.2); // Add some twist
       
+      // Top face
       beginShape();
       texture(currentFrame);
       getEffectColor(distance);
-      
-      vertex(-cellSize/2, 0, -cellSize/2, 0, 0);
-      vertex(cellSize/2, 0, -cellSize/2, currentFrame.width, 0);
-      vertex(cellSize/2, 0, cellSize/2, currentFrame.width, currentFrame.height);
-      vertex(-cellSize/2, 0, cellSize/2, 0, currentFrame.height);
+      vertex(-cellSize/2, cellDepth/2, -cellSize/2, 0, 0);
+      vertex(cellSize/2, cellDepth/2, -cellSize/2, currentFrame.width, 0);
+      vertex(cellSize/2, cellDepth/2, cellSize/2, currentFrame.width, currentFrame.height);
+      vertex(-cellSize/2, cellDepth/2, cellSize/2, 0, currentFrame.height);
       endShape(CLOSE);
+      
+      // Bottom face
+      beginShape();
+      texture(currentFrame);
+      getEffectColor((distance + 180) % 360);
+      vertex(-cellSize/2, -cellDepth/2, -cellSize/2, currentFrame.width, 0);
+      vertex(cellSize/2, -cellDepth/2, -cellSize/2, 0, 0);
+      vertex(cellSize/2, -cellDepth/2, cellSize/2, 0, currentFrame.height);
+      vertex(-cellSize/2, -cellDepth/2, cellSize/2, currentFrame.width, currentFrame.height);
+      endShape(CLOSE);
+      
+      // Side faces
+      beginShape(TRIANGLE_STRIP);
+      texture(currentFrame);
+      getEffectColor((distance + 90) % 360);
+      
+      // Front edge
+      vertex(-cellSize/2, cellDepth/2, -cellSize/2, 0, 0);
+      vertex(-cellSize/2, -cellDepth/2, -cellSize/2, 0, currentFrame.height/4);
+      vertex(cellSize/2, cellDepth/2, -cellSize/2, currentFrame.width, 0);
+      vertex(cellSize/2, -cellDepth/2, -cellSize/2, currentFrame.width, currentFrame.height/4);
+      
+      // Right edge
+      vertex(cellSize/2, cellDepth/2, cellSize/2, currentFrame.width, currentFrame.height/2);
+      vertex(cellSize/2, -cellDepth/2, cellSize/2, currentFrame.width, currentFrame.height*3/4);
+      
+      // Back edge
+      vertex(-cellSize/2, cellDepth/2, cellSize/2, 0, currentFrame.height/2);
+      vertex(-cellSize/2, -cellDepth/2, cellSize/2, 0, currentFrame.height*3/4);
+      
+      // Left edge (back to start)
+      vertex(-cellSize/2, cellDepth/2, -cellSize/2, 0, currentFrame.height);
+      vertex(-cellSize/2, -cellDepth/2, -cellSize/2, 0, currentFrame.height);
+      endShape();
       
       popMatrix();
     }
@@ -203,40 +287,79 @@ void drawWaveGridEffect() {
   popMatrix();
 }
 
-//void drawParticleEffect() {
-//  pushMatrix();
-//  rotateX(PI/3);
+void drawParticleEffect() {
+  pushMatrix();
+  rotateX(PI/3);
   
-//  int numParticles = 100;
-//  float maxRadius = 300 * sizeMultiplier;
+  int numParticles = 100;
+  float maxRadius = 300 * sizeMultiplier;
+  float particleDepth = 30 * sizeMultiplier; // Depth for 3D particles
   
-//  for (int i = 0; i < numParticles; i++) {
-//    float angle = map(i, 0, numParticles, 0, TWO_PI);
-//    float radius = maxRadius * noise(i * 0.1, frameCount * 0.01);
-//    float x = cos(angle + theta) * radius;
-//    float y = sin(angle + theta) * radius;
-//    float z = sin(frameCount * 0.02 + i * 0.1) * 100;
+  for (int i = 0; i < numParticles; i++) {
+    float angle = map(i, 0, numParticles, 0, TWO_PI);
+    float radius = maxRadius * noise(i * 0.1, frameCount * 0.01);
+    float x = cos(angle + theta) * radius;
+    float y = sin(angle + theta) * radius;
+    float z = sin(frameCount * 0.02 + i * 0.1) * 100;
     
-//    pushMatrix();
-//    translate(x, y, z);
+    pushMatrix();
+    translate(x, y, z);
+    // Add dynamic rotation to each particle
+    rotateX(sin(theta + i * 0.1) * PI);
+    rotateY(cos(theta + i * 0.2) * PI);
+    rotateZ(sin(theta + i * 0.15) * PI/2);
     
-//    float size = 50 * sizeMultiplier * noise(i * 0.2, frameCount * 0.02);
+    float size = 50 * sizeMultiplier * noise(i * 0.2, frameCount * 0.02);
+    float tx = map(i, 0, numParticles, 0, currentFrame.width);
     
-//    beginShape();
-//    texture(currentFrame);
-//    getEffectColor(i * (360/numParticles));
+    // Draw front face
+    beginShape();
+    texture(currentFrame);
+    getEffectColor(i * (360/numParticles));
+    vertex(-size, -size, particleDepth/2, tx, 0);
+    vertex(size, -size, particleDepth/2, tx + currentFrame.width/numParticles, 0);
+    vertex(size, size, particleDepth/2, tx + currentFrame.width/numParticles, currentFrame.height);
+    vertex(-size, size, particleDepth/2, tx, currentFrame.height);
+    endShape(CLOSE);
     
-//    float tx = map(i, 0, numParticles, 0, currentFrame.width);
-//    vertex(-size, -size, 0, tx, 0);
-//    vertex(size, -size, 0, tx + currentFrame.width/numParticles, 0);
-//    vertex(size, size, 0, tx + currentFrame.width/numParticles, currentFrame.height);
-//    vertex(-size, size, 0, tx, currentFrame.height);
-//    endShape(CLOSE);
+    // Draw back face
+    beginShape();
+    texture(currentFrame);
+    getEffectColor((i * (360/numParticles) + 180) % 360);
+    vertex(-size, -size, -particleDepth/2, tx + currentFrame.width/numParticles, 0);
+    vertex(size, -size, -particleDepth/2, tx, 0);
+    vertex(size, size, -particleDepth/2, tx, currentFrame.height);
+    vertex(-size, size, -particleDepth/2, tx + currentFrame.width/numParticles, currentFrame.height);
+    endShape(CLOSE);
     
-//    popMatrix();
-//  }
-//  popMatrix();
-//}
+    // Draw side faces
+    beginShape(TRIANGLE_STRIP);
+    texture(currentFrame);
+    getEffectColor((i * (360/numParticles) + 90) % 360);
+    
+    // Top edge
+    vertex(-size, -size, particleDepth/2, tx, 0);
+    vertex(-size, -size, -particleDepth/2, tx, currentFrame.height/4);
+    vertex(size, -size, particleDepth/2, tx + currentFrame.width/numParticles, 0);
+    vertex(size, -size, -particleDepth/2, tx + currentFrame.width/numParticles, currentFrame.height/4);
+    
+    // Right edge
+    vertex(size, size, particleDepth/2, tx + currentFrame.width/numParticles, currentFrame.height/2);
+    vertex(size, size, -particleDepth/2, tx + currentFrame.width/numParticles, currentFrame.height*3/4);
+    
+    // Bottom edge
+    vertex(-size, size, particleDepth/2, tx, currentFrame.height/2);
+    vertex(-size, size, -particleDepth/2, tx, currentFrame.height*3/4);
+    
+    // Left edge (back to start)
+    vertex(-size, -size, particleDepth/2, tx, currentFrame.height);
+    vertex(-size, -size, -particleDepth/2, tx, currentFrame.height);
+    endShape();
+    
+    popMatrix();
+  }
+  popMatrix();
+}
 
 void drawSpiralTowerEffect() {
   pushMatrix();
@@ -245,56 +368,70 @@ void drawSpiralTowerEffect() {
   float towerHeight = 600 * sizeMultiplier;
   int spiralSteps = 30;
   float spiralRadius = 200 * sizeMultiplier;
+  int facesPerStep = 8; // Number of faces around each step
   
   for (int i = 0; i < spiralSteps; i++) {
     float z = map(i, 0, spiralSteps-1, -towerHeight/2, towerHeight/2);
-    float angle = i * TWO_PI/8 + theta;
+    float baseAngle = i * TWO_PI/8 + theta;
     float radius = spiralRadius * (1 + sin(z * 0.01 + theta));
     
-    pushMatrix();
-    translate(cos(angle) * radius, sin(angle) * radius, z);
-    rotateY(angle);
-    
-    float size = 50 * sizeMultiplier * (1 + sin(z * 0.02 + theta));
-    
-    beginShape();
-    texture(currentFrame);
-    getEffectColor(i * (360/spiralSteps));
-    
-    float tx = map(i, 0, spiralSteps, 0, currentFrame.width);
-    vertex(-size, -size, 0, tx, 0);
-    vertex(size, -size, 0, tx + currentFrame.width/spiralSteps, 0);
-    vertex(size, size, 0, tx + currentFrame.width/spiralSteps, currentFrame.height);
-    vertex(-size, size, 0, tx, currentFrame.height);
-    endShape(CLOSE);
-    
-    popMatrix();
-  }
-  popMatrix();
-}
-
-void drawPolygonEffect() {
-  pushMatrix();
-  rotateX(PI/3);
-  
-  int rings = 10;
-  float maxRadius = 300 * sizeMultiplier;
-  
-  for (int i = 0; i < rings; i++) {
-    float radius = map(i, 0, rings-1, maxRadius * 0.2, maxRadius);
-    float rotationOffset = theta * (i % 2 == 0 ? 1 : -1);
-    
-    pushMatrix();
-    rotateZ(rotationOffset);
-    
-    getEffectColor(i * (360/rings));
-    drawPolygon(radius, 
-                map(i, 0, rings, 0, currentFrame.width),
-                0,
-                currentFrame.width/rings,
-                currentFrame.height);
-    
-    popMatrix();
+    // Create multiple faces around each spiral step
+    for (int face = 0; face < facesPerStep; face++) {
+      pushMatrix();
+      float faceAngle = baseAngle + (TWO_PI * face / facesPerStep);
+      float x = cos(faceAngle) * radius;
+      float y = sin(faceAngle) * radius;
+      
+      translate(x, y, z);
+      rotateY(faceAngle + PI/2); // Rotate face to point outward
+      rotateX(sin(theta + i * 0.2) * 0.3); // Add some wobble
+      rotateZ(cos(theta + face * 0.5) * 0.2); // Add some twist
+      
+      float size = 50 * sizeMultiplier * (1 + sin(z * 0.02 + theta));
+      
+      // Draw front face
+      beginShape();
+      texture(currentFrame);
+      getEffectColor(i * (360/spiralSteps) + face * (360/facesPerStep));
+      float tx = map(i + face, 0, spiralSteps + facesPerStep, 0, currentFrame.width);
+      vertex(-size, -size, size/2, tx, 0);
+      vertex(size, -size, size/2, tx + currentFrame.width/spiralSteps, 0);
+      vertex(size, size, size/2, tx + currentFrame.width/spiralSteps, currentFrame.height);
+      vertex(-size, size, size/2, tx, currentFrame.height);
+      endShape(CLOSE);
+      
+      // Draw back face
+      beginShape();
+      texture(currentFrame);
+      getEffectColor((i * (360/spiralSteps) + face * (360/facesPerStep) + 180) % 360);
+      vertex(-size, -size, -size/2, tx + currentFrame.width/spiralSteps, 0);
+      vertex(size, -size, -size/2, tx, 0);
+      vertex(size, size, -size/2, tx, currentFrame.height);
+      vertex(-size, size, -size/2, tx + currentFrame.width/spiralSteps, currentFrame.height);
+      endShape(CLOSE);
+      
+      // Connect front and back faces with side faces
+      beginShape(TRIANGLE_STRIP);
+      texture(currentFrame);
+      getEffectColor((i * (360/spiralSteps) + face * (360/facesPerStep) + 90) % 360);
+      // Top edge
+      vertex(-size, -size, size/2, tx, 0);
+      vertex(-size, -size, -size/2, tx, currentFrame.height/4);
+      vertex(size, -size, size/2, tx + currentFrame.width/spiralSteps, 0);
+      vertex(size, -size, -size/2, tx + currentFrame.width/spiralSteps, currentFrame.height/4);
+      // Right edge
+      vertex(size, size, size/2, tx + currentFrame.width/spiralSteps, currentFrame.height/2);
+      vertex(size, size, -size/2, tx + currentFrame.width/spiralSteps, currentFrame.height*3/4);
+      // Bottom edge
+      vertex(-size, size, size/2, tx, currentFrame.height/2);
+      vertex(-size, size, -size/2, tx, currentFrame.height*3/4);
+      // Left edge (back to start)
+      vertex(-size, -size, size/2, tx, currentFrame.height);
+      vertex(-size, -size, -size/2, tx, currentFrame.height);
+      endShape();
+      
+      popMatrix();
+    }
   }
   popMatrix();
 } 

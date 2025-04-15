@@ -1,6 +1,9 @@
 import processing.video.*;
 import oscP5.*;  // Add OSC library
 import netP5.*;  // Add netP5 library
+import com.hamoid.*;  // Add VideoExport library
+import java.io.*;
+import java.util.concurrent.TimeUnit;
 
 // OSC variables
 OscP5 oscP5;
@@ -14,9 +17,12 @@ boolean useCamera = true;  // Toggle between camera and video
 String videoPath = "video.mp4";  // Default video file name
 boolean showBackground = true;  // Control background video visibility
 
-// Camera and effects
+// Video recording
 boolean isRecording = false;
 int frameRate = 30;
+VideoExport videoExport;
+
+// Camera and effects
 int currentEffect = 0;
 float rotationSpeed = 0.5;
 float colorSpeed = 1.0;
@@ -55,6 +61,12 @@ float targetRotY = 0;
 boolean mouseControl = true;
 PVector moveOffset = new PVector(0, 0, 0);
 
+// Add at the top of the file with other global variables
+String currentVideoFile = null; // Store the current video file path
+Process ffmpegProcess = null;
+OutputStream ffmpegInput = null;
+PGraphics recordBuffer;
+
 void setup() {
   size(800, 600, P3D);
   colorMode(HSB, 360, 100, 100);
@@ -78,8 +90,21 @@ void setup() {
   // Create output directory if it doesn't exist
   File outputDir = new File(sketchPath("output"));
   if (!outputDir.exists()) {
+    println("Creating output directory...");
     outputDir.mkdir();
   }
+  
+  // Test if directory is writable
+  if (!outputDir.canWrite()) {
+    println("Warning: Output directory is not writable!");
+  } else {
+    println("Output directory is ready at: " + outputDir.getAbsolutePath());
+  }
+  
+  // Initialize video export
+  String timestamp = nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "_" + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2);
+  videoExport = new VideoExport(this, "output/video_" + timestamp + ".mp4");
+  videoExport.setFrameRate(frameRate);
   
   // Initialize effects
   initializeEffects();
@@ -156,12 +181,13 @@ void draw() {
   updateCamera();
   drawCurrentEffect();
   
-  // Handle recording before drawing controls
+  // Handle recording
   if (isRecording) {
-    saveFrame("output/frame-######.png");
+    loadPixels(); // Make sure pixels are updated
+    videoExport.saveFrame();
   }
   
-  // Draw controls last, after saving frame
+  // Draw controls last
   drawControls();
 }
 
@@ -227,7 +253,7 @@ void updateMouseControl() {
   if (mouseControl && mousePressed) {
     if (mouseButton == LEFT) {
       targetRotY += (mouseX - pmouseX) * 0.01;
-      targetRotX += (mouseY - pmouseY) * 0.01;
+      targetRotX += (mouseY - pmouseY) * 0.1;
     } else if (mouseButton == RIGHT) {
       moveOffset.x += (mouseX - pmouseX);
       moveOffset.y += (mouseY - pmouseY);
@@ -363,9 +389,9 @@ void keyPressed() {
     case 'R':
       isRecording = !isRecording;
       if (isRecording) {
-        println("Started recording...");
+        startRecording();
       } else {
-        println("Stopped recording. Frames saved in output folder.");
+        stopRecording();
       }
       break;
     // New color mode controls
@@ -513,7 +539,16 @@ void oscEvent(OscMessage msg) {
       showBackground = msg.get(0).intValue() == 1;
       break;
     case "/recording":
-      isRecording = msg.get(0).intValue() == 1;
+      boolean newRecordingState = msg.get(0).intValue() == 1;
+      if (newRecordingState != isRecording) {  // Only act if state actually changed
+        isRecording = newRecordingState;
+        if (isRecording) {
+          startRecording();
+        } else {
+          stopRecording();
+        }
+        println("Recording state changed via OSC to: " + isRecording);
+      }
       break;
     case "/source":
       useCamera = msg.get(0).intValue() == 0;
@@ -527,4 +562,119 @@ void oscEvent(OscMessage msg) {
       loadVideo(msg.get(0).stringValue());
       break;
   }
+}
+
+void startRecording() {
+  String timestamp = nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "_" + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2);
+  videoExport = new VideoExport(this, "output/video_" + timestamp + ".mp4");
+  videoExport.setFrameRate(frameRate);
+  videoExport.startMovie();
+  println("Started recording: output/video_" + timestamp + ".mp4");
+}
+
+void stopRecording() {
+  if (videoExport != null) {
+    videoExport.endMovie();
+    println("Finished recording");
+  }
+}
+
+void drawPolygonEffect() {
+  if (currentFrame == null) return;
+  
+  float radius = 250 * sizeMultiplier;  // Radius of the circle
+  int numRings = 3;  // Number of concentric rings
+  int polygonsPerRing = 8;  // Number of polygons in each ring
+  float polygonSize = 60 * sizeMultiplier;  // Base size of each polygon
+  
+  pushMatrix();
+  
+  // Global rotation for the entire formation
+  rotateY(theta * 0.2 * effectSpeed);
+  rotateX(sin(theta * 0.3) * 0.2);
+  
+  // Create multiple rings of polygons
+  for (int ring = 0; ring < numRings; ring++) {
+    float ringRadius = radius * (1.0 - ring * 0.25);  // Each ring is slightly smaller
+    float ringHeight = sin(theta + ring * TWO_PI/numRings) * 50;  // Vertical wave motion
+    float ringRotation = theta * (1 + ring * 0.2) * effectSpeed;  // Each ring rotates differently
+    
+    pushMatrix();
+    translate(0, ringHeight, 0);
+    rotateY(ringRotation);
+    
+    // Create polygons in this ring
+    for (int i = 0; i < polygonsPerRing; i++) {
+      pushMatrix();
+      
+      // Position around the circle
+      float angle = TWO_PI * i / polygonsPerRing;
+      float x = cos(angle) * ringRadius;
+      float z = sin(angle) * ringRadius;
+      
+      // Individual polygon animation
+      float floatY = sin(theta * 2 + i * 0.5) * 30;
+      float individualRotation = theta * effectSpeed + i * TWO_PI / polygonsPerRing;
+      
+      translate(x, floatY, z);
+      
+      // Make polygons face outward
+      rotateY(angle);
+      rotateX(sin(theta + i) * 0.3);
+      rotateZ(individualRotation * 0.5);
+      
+      // Draw the polygon
+      beginShape();
+      texture(currentFrame);
+      noStroke();
+      
+      // Calculate vertices
+      for (int j = 0; j < polygonSides; j++) {
+        float a = TWO_PI * j / polygonSides;
+        float vx = cos(a) * polygonSize;
+        float vy = sin(a) * polygonSize;
+        
+        // Dynamic texture mapping
+        float tx = map(cos(a), -1, 1, 0, currentFrame.width);
+        float ty = map(sin(a), -1, 1, 0, currentFrame.height);
+        
+        // Color effect based on position and time
+        getEffectColor(j * 30 + ring * 60 + i * 20);
+        
+        vertex(vx, vy, 0, tx, ty);
+      }
+      endShape(CLOSE);
+      
+      popMatrix();
+    }
+    popMatrix();
+  }
+  
+  // Add floating center polygon
+  pushMatrix();
+  rotateZ(theta * effectSpeed);
+  rotateX(sin(theta * 0.7) * 0.5);
+  rotateY(cos(theta * 0.5) * 0.5);
+  scale(1.5);  // Make center polygon larger
+  
+  beginShape();
+  texture(currentFrame);
+  noStroke();
+  
+  for (int i = 0; i < polygonSides; i++) {
+    float angle = TWO_PI * i / polygonSides;
+    float x = cos(angle) * polygonSize;
+    float y = sin(angle) * polygonSize;
+    
+    float tx = map(cos(angle), -1, 1, 0, currentFrame.width);
+    float ty = map(sin(angle), -1, 1, 0, currentFrame.height);
+    
+    getEffectColor(i * 45 + frameCount * 0.5);
+    
+    vertex(x, y, 0, tx, ty);
+  }
+  endShape(CLOSE);
+  
+  popMatrix();
+  popMatrix();
 } 

@@ -154,6 +154,25 @@ class VideoEffectsController:
         self.create_checkbox(check_frame, "🎦 BG", "background_var", 1, 0)
         self.create_checkbox(check_frame, "⏺️ REC", "recording_var", 1, 1)
 
+        # Background Stage Controls
+        bg_frame = ttk.Frame(additional_frame)
+        bg_frame.grid(row=1, column=0, pady=5, sticky=(tk.W, tk.E))
+
+        ttk.Label(bg_frame, text="Background Stage:").grid(
+            row=0, column=0, sticky=tk.W, padx=5
+        )
+        self.bg_stage_var = tk.StringVar(value="Normal")
+        bg_stages = ttk.Combobox(bg_frame, textvariable=self.bg_stage_var, width=20)
+        bg_stages["values"] = (
+            "Normal",
+            "B&W Dynamic",
+            "Edge Detection",
+            "Color Explosion",
+            "Psychedelic Mirror",
+        )
+        bg_stages.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
+        bg_stages.bind("<<ComboboxSelected>>", self.on_bg_stage_change)
+
     def create_slider(
         self, parent, label, var_name, min_val, max_val, default_val, row
     ):
@@ -246,6 +265,17 @@ class VideoEffectsController:
 
     def on_recording_change(self):
         self.osc.send_message("/recording", int(self.recording_var.get()))
+
+    def on_bg_stage_change(self, event):
+        stage_map = {
+            "Normal": 0,
+            "B&W Dynamic": 1,
+            "Edge Detection": 2,
+            "Color Explosion": 3,
+            "Psychedelic Mirror": 4,
+        }
+        stage_value = stage_map[self.bg_stage_var.get()]
+        self.osc.send_message("/background_stage", stage_value)
 
     def on_load_video(self):
         file_path = filedialog.askopenfilename(

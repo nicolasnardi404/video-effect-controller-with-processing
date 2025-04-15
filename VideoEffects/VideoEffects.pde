@@ -67,6 +67,9 @@ Process ffmpegProcess = null;
 OutputStream ffmpegInput = null;
 PGraphics recordBuffer;
 
+// Add after other global variables
+int backgroundStage = 0; // 0: Normal, 1: B&W, 2: Edge Detection, 3: Saturation Explosion, 4: Psychedelic
+
 void setup() {
   size(800, 600, P3D);
   colorMode(HSB, 360, 100, 100);
@@ -126,52 +129,353 @@ void draw() {
   
   // Process the current frame if available
   if (currentFrame != null) {
+    // Create a buffer for background processing
+    PGraphics processedFrame = createGraphics(currentFrame.width, currentFrame.height, P2D);
+    processedFrame.beginDraw();
+    processedFrame.image(currentFrame, 0, 0);
+    
+    switch(backgroundStage) {
+      case 0: // Normal with subtle enhancement
+        processedFrame.filter(POSTERIZE, 255); // Very subtle posterization
+        processedFrame.filter(BLUR, 0.5f);
+        break;
+        
+      case 1: // Two-color smooth transition effect
+        processedFrame.filter(GRAY);
+        processedFrame.filter(POSTERIZE, 4); // Keep strong contrast
+        processedFrame.loadPixels();
+        // Calculate smooth color transitions
+        float hue1 = (frameCount * 0.2) % 360; // First color hue
+        float hue2 = (hue1 + 180) % 360; // Second color (complementary)
+        for (int i = 0; i < processedFrame.pixels.length; i++) {
+          float b = brightness(processedFrame.pixels[i]);
+          // Map brightness to interpolate between the two colors
+          if (b < 50) {
+            processedFrame.pixels[i] = color(hue1, 70, 60); // Darker areas get first color
+          } else {
+            processedFrame.pixels[i] = color(hue2, 70, 80); // Lighter areas get second color
+          }
+        }
+        processedFrame.updatePixels();
+        break;
+        
+      case 2: // Ghostly Horror effect
+        processedFrame.filter(GRAY);
+        processedFrame.loadPixels();
+        float timeScale = frameCount * 0.02;
+        
+        for (int y = 0; y < processedFrame.height; y++) {
+          for (int x = 0; x < processedFrame.width; x++) {
+            int i = x + y * processedFrame.width;
+            
+            // Create wavey distortion
+            float distortX = x + sin(y * 0.05 + timeScale) * 2;
+            float distortY = y + cos(x * 0.05 + timeScale) * 2;
+            
+            // Add noise distortion
+            float noiseValue = noise(x * 0.02, y * 0.02, timeScale) * 20;
+            distortX += noiseValue;
+            distortY += noiseValue;
+            
+            // Keep coordinates within bounds
+            distortX = constrain(distortX, 0, processedFrame.width - 1);
+            distortY = constrain(distortY, 0, processedFrame.height - 1);
+            
+            // Sample the distorted position
+            int srcPos = int(distortX) + int(distortY) * processedFrame.width;
+            srcPos = constrain(srcPos, 0, processedFrame.pixels.length - 1);
+            
+            // Get brightness and apply contrast
+            float b = brightness(processedFrame.pixels[srcPos]);
+            b = map(b, 30, 70, 0, 100); // Increase contrast
+            b = constrain(b, 0, 100);
+            
+            // Add ghostly fade effect
+            float fadeAmount = noise(x * 0.01, y * 0.01, timeScale * 0.5) * 30;
+            b = constrain(b - fadeAmount, 0, 100);
+            
+            // Create final color with slight variation
+            processedFrame.pixels[i] = color(0, 0, b);
+          }
+        }
+        processedFrame.updatePixels();
+        
+        // Add vignette effect
+        processedFrame.loadPixels();
+        float centerX = processedFrame.width / 2;
+        float centerY = processedFrame.height / 2;
+        float maxDist = dist(0, 0, centerX, centerY);
+        
+        for (int y = 0; y < processedFrame.height; y++) {
+          for (int x = 0; x < processedFrame.width; x++) {
+            int i = x + y * processedFrame.width;
+            float d = dist(x, y, centerX, centerY);
+            float vignetteAmount = map(d, 0, maxDist, 0, 1);
+            vignetteAmount = pow(vignetteAmount, 2); // Make vignette more pronounced
+            
+            float b = brightness(processedFrame.pixels[i]);
+            b = b * (1 - vignetteAmount * 0.7); // Darken edges
+            processedFrame.pixels[i] = color(0, 0, b);
+          }
+        }
+        processedFrame.updatePixels();
+        break;
+        
+      case 3: // Dynamic Color Explosion
+        processedFrame.colorMode(HSB, 360, 100, 100);
+        processedFrame.loadPixels();
+        float pulseRate = sin(millis() * 0.002f) * 0.5 + 1.5;
+        for (int y = 0; y < processedFrame.height; y++) {
+          for (int x = 0; x < processedFrame.width; x++) {
+            int i = x + y * processedFrame.width;
+            color c = processedFrame.pixels[i];
+            float h = (hue(c) + frameCount) % 360;
+            float s = min(saturation(c) * pulseRate, 100);
+            float b = brightness(c);
+            float distanceFromCenter = dist(x, y, processedFrame.width/2, processedFrame.height/2);
+            float hueMod = map(distanceFromCenter, 0, 300, 0, 180) * sin(frameCount * 0.02);
+            processedFrame.pixels[i] = color((h + hueMod) % 360, s, b);
+          }
+        }
+        processedFrame.updatePixels();
+        break;
+        
+      case 4: // Psychedelic Mirror
+        processedFrame.colorMode(HSB, 360, 100, 100);
+        processedFrame.loadPixels();
+        float mirrorTimeScale = millis() * 0.001f;
+        int halfWidth = processedFrame.width / 2;
+        
+        for (int y = 0; y < processedFrame.height; y++) {
+          for (int x = 0; x < halfWidth; x++) {
+            int pos1 = x + y * processedFrame.width;
+            int pos2 = (processedFrame.width - 1 - x) + y * processedFrame.width;
+            color c = processedFrame.pixels[pos1];
+            
+            float noiseVal = noise(x * 0.02f, y * 0.02f, mirrorTimeScale);
+            float h = (hue(c) + noiseVal * 180) % 360;
+            float s = min(saturation(c) * 1.5f, 100);
+            float b = brightness(c);
+            
+            color mirroredColor = color(h, s, b);
+            processedFrame.pixels[pos1] = mirroredColor;
+            processedFrame.pixels[pos2] = mirroredColor;
+          }
+        }
+        
+        // Add flowing lines
+        for (int y = 0; y < processedFrame.height; y++) {
+          float wave = sin(y * 0.05 + mirrorTimeScale * 2) * 20;
+          for (int x = 0; x < processedFrame.width; x++) {
+            if (abs((x + wave) % 20) < 2) {
+              int pos = x + y * processedFrame.width;
+              float h = (frameCount * 2) % 360;
+              processedFrame.pixels[pos] = color(h, 100, 100);
+            }
+          }
+        }
+        processedFrame.updatePixels();
+        break;
+    }
+    processedFrame.endDraw();
+    
     // Apply shaders if needed
     if (rgbShiftAmount > 0 || noiseAmount > 0) {
-      PGraphics shaderBuffer = createGraphics(currentFrame.width, currentFrame.height, P2D);
+      PGraphics shaderBuffer = createGraphics(processedFrame.width, processedFrame.height, P2D);
       shaderBuffer.beginDraw();
       shaderBuffer.background(0);
       
       // Apply RGB shift
       if (rgbShiftAmount > 0) {
         shaderBuffer.shader(rgbShiftShader);
-        rgbShiftShader.set("textureSampler", currentFrame);
+        rgbShiftShader.set("textureSampler", processedFrame);
         rgbShiftShader.set("amount", rgbShiftAmount);
         rgbShiftShader.set("time", millis() * 0.001);
-        shaderBuffer.image(currentFrame, 0, 0);
+        shaderBuffer.image(processedFrame, 0, 0);
         shaderBuffer.resetShader();
       }
       
       // Apply noise
       if (noiseAmount > 0) {
         shaderBuffer.shader(noiseShader);
-        noiseShader.set("textureSampler", currentFrame);
+        noiseShader.set("textureSampler", processedFrame);
         noiseShader.set("amount", noiseAmount);
         noiseShader.set("time", millis() * 0.001);
-        shaderBuffer.image(currentFrame, 0, 0);
+        shaderBuffer.image(processedFrame, 0, 0);
         shaderBuffer.resetShader();
       }
       
       shaderBuffer.endDraw();
       currentFrame = shaderBuffer.get();
+    } else {
+      currentFrame = processedFrame.get();
     }
     
-    // Draw the background video
     if (showBackground) {
+      // Draw the background video with effects
       pushMatrix();
       hint(DISABLE_DEPTH_TEST);
       camera();
       
-      // Draw semi-transparent black overlay
+      // Draw colored overlay based on current color mode
       noStroke();
-      fill(0, 150);
+      float overlayHue = (frameCount * 0.5) % 360;
+      switch(colorMode) {
+        case 0: // Rainbow
+          fill(overlayHue, 80, 30, 150);
+          break;
+        case 1: // Monochromatic
+          fill(baseHue, 70, 30, 150);
+          break;
+        case 2: // Complementary
+          fill((baseHue + 180) % 360, 70, 30, 150);
+          break;
+        case 3: // Analogous
+          fill((baseHue + 30) % 360, 70, 30, 150);
+          break;
+        case 4: // Custom
+          fill(baseHue, 70, 30, 150);
+          break;
+      }
       rect(0, 0, width, height);
       
-      // Draw full-screen video in background
+      // Draw full-screen video in background with dynamic tint
       imageMode(CORNER);
-      tint(360, 40, 100); // White tint with lower opacity
+      float tintHue = (baseHue + frameCount * colorSpeed) % 360;
+      tint(tintHue, 60, 80, 100); // Colored tint with medium opacity
       image(currentFrame, 0, 0, width, height);
       noTint();
+      hint(ENABLE_DEPTH_TEST);
+      popMatrix();
+    } else {
+      // Create dynamic colored background when video is hidden
+      pushMatrix();
+      hint(DISABLE_DEPTH_TEST);
+      camera();
+      
+      float time = millis() * 0.0005; // Slower time scale
+      
+      switch(backgroundStage) {
+        case 0: // Floating bubbles
+          // Soft gradient base
+          noStroke();
+          for (int y = 0; y < height; y += height/40) {
+            float inter = map(y, 0, height, 0, 1);
+            float hue = (baseHue + inter * 30) % 360;
+            fill(hue, 30, 98); // Very light pastel base
+            rect(0, y, width, height/40 + 1);
+          }
+          
+          // Floating bubbles with trails
+          for (int i = 0; i < 12; i++) {
+            float noiseX = noise(time + i * 100, 0) * width;
+            float noiseY = noise(0, time + i * 100) * height;
+            float size = 30 + noise(time * 2 + i * 300) * 50;
+            float hue = (baseHue + i * 30) % 360;
+            
+            // Draw trail
+            for (int j = 4; j > 0; j--) {
+              float trailX = noiseX + cos(time * (0.5 + i * 0.1) + j) * 20;
+              float trailY = noiseY + sin(time * (0.7 + i * 0.1) + j) * 20;
+              float alpha = map(j, 4, 0, 20, 60);
+              fill(hue, 40, 95, alpha);
+              circle(trailX, trailY, size * j/4);
+            }
+          }
+          break;
+          
+        case 1: // Aurora waves
+          background(0);
+          noStroke();
+          
+          // Create flowing aurora waves
+          for (int i = 0; i < 8; i++) {
+            float waveOffset = i * height/8;
+            for (int x = 0; x < width; x += 2) {
+              float wave = sin(x * 0.01 + time + i) * 100;
+              float hue = (baseHue + wave * 0.5) % 360;
+              float alpha = 100 - abs(wave) * 0.5;
+              fill(hue, 50, 95, alpha);
+              float y = waveOffset + wave;
+              circle(x, y, 150);
+            }
+          }
+          break;
+          
+        case 2: // Geometric patterns
+          background(0);
+          noStroke();
+          
+          // Draw rotating triangles
+          for (int i = 0; i < 12; i++) {
+            float angle = TWO_PI * i / 12 + time;
+            float radius = 150 + sin(time * 2 + i) * 50;
+            float x = width/2 + cos(angle) * radius;
+            float y = height/2 + sin(angle) * radius;
+            float size = 100 + sin(time + i) * 30;
+            
+            fill((baseHue + i * 30) % 360, 40, 95, 70);
+            pushMatrix();
+            translate(x, y);
+            rotate(angle + time);
+            triangle(-size/2, size/2, size/2, size/2, 0, -size/2);
+            popMatrix();
+          }
+          break;
+          
+        case 3: // Color rain
+          // Dark background with bright drops
+          background(0);
+          noStroke();
+          
+          // Create rain drops
+          for (int i = 0; i < 100; i++) {
+            float x = (noise(i, time * 0.5) * width * 1.5) - width * 0.25;
+            float y = ((time * 1000 + i * 100) % height);
+            float speed = 1 + noise(i) * 2;
+            float len = 10 + speed * 10;
+            float hue = (baseHue + noise(i) * 60) % 360;
+            
+            // Draw drop with gradient
+            for (int j = 0; j < len; j++) {
+              float alpha = map(j, 0, len, 100, 0);
+              fill(hue, 60, 95, alpha);
+              float dropY = y - j * speed;
+              circle(x, dropY, 2);
+            }
+          }
+          break;
+          
+        case 4: // Nebula clouds
+          background(0);
+          noStroke();
+          
+          // Create nebula effect
+          for (int i = 0; i < 20; i++) {
+            float cloudX = width/2 + noise(time + i * 100) * width - width/2;
+            float cloudY = height/2 + noise(time * 0.5 + i * 200) * height - height/2;
+            float size = 100 + noise(i, time) * 200;
+            float hue = (baseHue + noise(i, time) * 60) % 360;
+            
+            // Create glowing cloud layers
+            for (int j = 5; j > 0; j--) {
+              float alpha = map(j, 5, 0, 10, 40);
+              float layerSize = size * j/3;
+              fill(hue, 30, 98, alpha);
+              circle(cloudX, cloudY, layerSize);
+              
+              // Add some sparkles
+              if (j == 1 && random(1) > 0.7) {
+                fill(hue, 10, 100, 80);
+                float sparkleX = cloudX + random(-size/2, size/2);
+                float sparkleY = cloudY + random(-size/2, size/2);
+                circle(sparkleX, sparkleY, random(1, 3));
+              }
+            }
+          }
+          break;
+      }
+      
       hint(ENABLE_DEPTH_TEST);
       popMatrix();
     }
@@ -359,12 +663,8 @@ void keyPressed() {
       colorIntensity = constrain(colorIntensity - 0.1, 0.1, 2);
       break;
     case 'b':
-      rgbShiftAmount = constrain(rgbShiftAmount + 0.1, 0, 1);
-      println("RGB Shift: " + nf(rgbShiftAmount, 1, 1));
-      break;
-    case 'B':
-      rgbShiftAmount = constrain(rgbShiftAmount - 0.1, 0, 1);
-      println("RGB Shift: " + nf(rgbShiftAmount, 1, 1));
+      backgroundStage = (backgroundStage + 1) % 5;
+      println("Background stage: " + backgroundStage);
       break;
     case 'n':
       noiseAmount = constrain(noiseAmount + 0.1, 0, 1);
@@ -561,6 +861,10 @@ void oscEvent(OscMessage msg) {
     case "/video_path":
       loadVideo(msg.get(0).stringValue());
       break;
+    case "/background_stage":
+      backgroundStage = msg.get(0).intValue();
+      println("Background stage changed to: " + backgroundStage);
+      break;
   }
 }
 
@@ -677,4 +981,4 @@ void drawPolygonEffect() {
   
   popMatrix();
   popMatrix();
-} 
+}

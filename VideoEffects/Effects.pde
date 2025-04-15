@@ -203,40 +203,40 @@ void drawWaveGridEffect() {
   popMatrix();
 }
 
-void drawParticleEffect() {
-  pushMatrix();
-  rotateX(PI/3);
+//void drawParticleEffect() {
+//  pushMatrix();
+//  rotateX(PI/3);
   
-  int numParticles = 100;
-  float maxRadius = 300 * sizeMultiplier;
+//  int numParticles = 100;
+//  float maxRadius = 300 * sizeMultiplier;
   
-  for (int i = 0; i < numParticles; i++) {
-    float angle = map(i, 0, numParticles, 0, TWO_PI);
-    float radius = maxRadius * noise(i * 0.1, frameCount * 0.01);
-    float x = cos(angle + theta) * radius;
-    float y = sin(angle + theta) * radius;
-    float z = sin(frameCount * 0.02 + i * 0.1) * 100;
+//  for (int i = 0; i < numParticles; i++) {
+//    float angle = map(i, 0, numParticles, 0, TWO_PI);
+//    float radius = maxRadius * noise(i * 0.1, frameCount * 0.01);
+//    float x = cos(angle + theta) * radius;
+//    float y = sin(angle + theta) * radius;
+//    float z = sin(frameCount * 0.02 + i * 0.1) * 100;
     
-    pushMatrix();
-    translate(x, y, z);
+//    pushMatrix();
+//    translate(x, y, z);
     
-    float size = 50 * sizeMultiplier * noise(i * 0.2, frameCount * 0.02);
+//    float size = 50 * sizeMultiplier * noise(i * 0.2, frameCount * 0.02);
     
-    beginShape();
-    texture(currentFrame);
-    getEffectColor(i * (360/numParticles));
+//    beginShape();
+//    texture(currentFrame);
+//    getEffectColor(i * (360/numParticles));
     
-    float tx = map(i, 0, numParticles, 0, currentFrame.width);
-    vertex(-size, -size, 0, tx, 0);
-    vertex(size, -size, 0, tx + currentFrame.width/numParticles, 0);
-    vertex(size, size, 0, tx + currentFrame.width/numParticles, currentFrame.height);
-    vertex(-size, size, 0, tx, currentFrame.height);
-    endShape(CLOSE);
+//    float tx = map(i, 0, numParticles, 0, currentFrame.width);
+//    vertex(-size, -size, 0, tx, 0);
+//    vertex(size, -size, 0, tx + currentFrame.width/numParticles, 0);
+//    vertex(size, size, 0, tx + currentFrame.width/numParticles, currentFrame.height);
+//    vertex(-size, size, 0, tx, currentFrame.height);
+//    endShape(CLOSE);
     
-    popMatrix();
-  }
-  popMatrix();
-}
+//    popMatrix();
+//  }
+//  popMatrix();
+//}
 
 void drawSpiralTowerEffect() {
   pushMatrix();

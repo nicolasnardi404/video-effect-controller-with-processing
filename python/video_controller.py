@@ -7,17 +7,69 @@ import os
 
 class VideoEffectsController:
     def __init__(self, parent):
-        # Create main frame
-        self.main_frame = ttk.Frame(parent, padding="10")
+        # Set style
+        style = ttk.Style()
+        style.configure("Title.TLabel", font=("Helvetica", 12, "bold"))
+        style.configure("Section.TLabelframe", padding=10)
+        style.configure("Section.TLabelframe.Label", font=("Helvetica", 10, "bold"))
+
+        # Create main frame with padding
+        self.main_frame = ttk.Frame(parent, padding="20")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # Configure grid columns to expand properly
+        self.main_frame.columnconfigure(0, weight=1)
+        self.main_frame.columnconfigure(1, weight=1)
 
         # Initialize OSC client
         self.osc = SimpleUDPClient("127.0.0.1", 12000)
 
-        # Effect selector
-        ttk.Label(self.main_frame, text="Effect:").grid(row=0, column=0, sticky=tk.W)
+        # Create sections - now in two columns
+        self.create_source_controls()  # Full width at top
+
+        # Left column
+        self.create_effect_controls(column=0)
+        self.create_motion_controls(column=0)
+
+        # Right column
+        self.create_color_controls(column=1)
+        self.create_additional_controls(column=1)
+
+    def create_source_controls(self):
+        # Source Control Section - full width
+        source_frame = ttk.LabelFrame(
+            self.main_frame, text="Source", style="Section.TLabelframe"
+        )
+        source_frame.grid(
+            row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10), padx=5
+        )
+
+        # Source buttons with modern styling
+        btn_frame = ttk.Frame(source_frame)
+        btn_frame.grid(row=0, column=0, pady=5)
+
+        self.source_var = tk.BooleanVar(value=True)
+        ttk.Button(btn_frame, text="📹 Use Camera", command=self.on_use_camera).grid(
+            row=0, column=0, padx=5
+        )
+        ttk.Button(btn_frame, text="🎬 Load Video", command=self.on_load_video).grid(
+            row=0, column=1, padx=5
+        )
+
+    def create_effect_controls(self, column):
+        # Effect Control Section
+        effect_frame = ttk.LabelFrame(
+            self.main_frame, text="Effect", style="Section.TLabelframe"
+        )
+        effect_frame.grid(
+            row=1, column=column, sticky=(tk.W, tk.E, tk.N), pady=5, padx=5
+        )
+        effect_frame.columnconfigure(1, weight=1)
+
+        # Effect selector with modern styling
+        ttk.Label(effect_frame, text="Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.effect_var = tk.StringVar(value="Tunnel")
-        effects = ttk.Combobox(self.main_frame, textvariable=self.effect_var)
+        effects = ttk.Combobox(effect_frame, textvariable=self.effect_var, width=20)
         effects["values"] = (
             "Tunnel",
             "Spherical",
@@ -29,15 +81,32 @@ class VideoEffectsController:
             "Spiral Tower",
             "Polygon",
         )
-        effects.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        effects.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
         effects.bind("<<ComboboxSelected>>", self.on_effect_change)
 
-        # Color Mode selector
-        ttk.Label(self.main_frame, text="Color Mode:").grid(
-            row=1, column=0, sticky=tk.W
+        # Effect parameters
+        self.create_slider(effect_frame, "Size", "size_var", 0.1, 3.0, 1.0, 1)
+        self.create_slider(effect_frame, "Speed", "effect_speed_var", 0.1, 3.0, 1.0, 2)
+        self.create_slider(
+            effect_frame, "Polygon Sides", "polygon_sides_var", 3, 12, 4, 3
         )
+
+    def create_color_controls(self, column):
+        # Color Control Section
+        color_frame = ttk.LabelFrame(
+            self.main_frame, text="Color", style="Section.TLabelframe"
+        )
+        color_frame.grid(
+            row=1, column=column, sticky=(tk.W, tk.E, tk.N), pady=5, padx=5
+        )
+        color_frame.columnconfigure(1, weight=1)
+
+        # Color mode selector
+        ttk.Label(color_frame, text="Mode:").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.color_mode_var = tk.StringVar(value="Rainbow")
-        color_modes = ttk.Combobox(self.main_frame, textvariable=self.color_mode_var)
+        color_modes = ttk.Combobox(
+            color_frame, textvariable=self.color_mode_var, width=20
+        )
         color_modes["values"] = (
             "Rainbow",
             "Monochromatic",
@@ -45,209 +114,70 @@ class VideoEffectsController:
             "Analogous",
             "Custom",
         )
-        color_modes.grid(row=1, column=1, sticky=(tk.W, tk.E))
+        color_modes.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
         color_modes.bind("<<ComboboxSelected>>", self.on_color_mode_change)
 
-        # Base Hue
-        ttk.Label(self.main_frame, text="Base Hue:").grid(row=2, column=0, sticky=tk.W)
-        self.base_hue_var = tk.DoubleVar(value=0)
-        base_hue_scale = ttk.Scale(
-            self.main_frame,
-            from_=0,
-            to=360,
-            variable=self.base_hue_var,
+        # Color parameters
+        self.create_slider(color_frame, "Base Hue", "base_hue_var", 0, 360, 0, 1)
+        self.create_slider(color_frame, "Brightness", "brightness_var", 0, 2, 1.0, 2)
+        self.create_slider(color_frame, "Saturation", "saturation_var", 0, 2, 1.0, 3)
+        self.create_slider(color_frame, "RGB Shift", "rgbshift_var", 0, 1, 0.0, 4)
+        self.create_slider(color_frame, "Noise", "noise_var", 0, 1, 0.0, 5)
+
+    def create_motion_controls(self, column):
+        # Motion Control Section
+        motion_frame = ttk.LabelFrame(
+            self.main_frame, text="Motion", style="Section.TLabelframe"
+        )
+        motion_frame.grid(row=2, column=column, sticky=(tk.W, tk.E), pady=5, padx=5)
+        motion_frame.columnconfigure(1, weight=1)
+
+        # Motion parameters
+        self.create_slider(motion_frame, "Rotation", "rotation_var", 0, 3, 0.5, 0)
+        self.create_slider(motion_frame, "Zoom", "zoom_var", -500, 500, 0, 1)
+
+    def create_additional_controls(self, column):
+        # Additional Controls Section
+        additional_frame = ttk.LabelFrame(
+            self.main_frame, text="Options", style="Section.TLabelframe"
+        )
+        additional_frame.grid(row=2, column=column, sticky=(tk.W, tk.E), pady=5, padx=5)
+
+        # Create a grid for checkboxes
+        check_frame = ttk.Frame(additional_frame)
+        check_frame.grid(row=0, column=0, pady=5)
+        check_frame.columnconfigure((0, 1), weight=1)
+
+        # Checkboxes with icons in a 2x2 grid
+        self.create_checkbox(check_frame, "👻 Ghost", "ghost_var", 0, 0)
+        self.create_checkbox(check_frame, "🖱️ Mouse", "mouse_control_var", 0, 1)
+        self.create_checkbox(check_frame, "🎦 BG", "background_var", 1, 0)
+        self.create_checkbox(check_frame, "⏺️ REC", "recording_var", 1, 1)
+
+    def create_slider(
+        self, parent, label, var_name, min_val, max_val, default_val, row
+    ):
+        ttk.Label(parent, text=label + ":").grid(row=row, column=0, sticky=tk.W, pady=2)
+        setattr(self, var_name, tk.DoubleVar(value=default_val))
+        slider = ttk.Scale(
+            parent,
+            from_=min_val,
+            to=max_val,
+            variable=getattr(self, var_name),
             orient=tk.HORIZONTAL,
-            command=self.on_base_hue_change,
+            command=getattr(self, f"on_{var_name.lower().replace('_var', '')}_change"),
         )
-        base_hue_scale.grid(row=2, column=1, sticky=(tk.W, tk.E))
+        slider.grid(row=row, column=1, sticky=(tk.W, tk.E), padx=5, pady=2)
 
-        # Rotation speed
-        ttk.Label(self.main_frame, text="Rotation:").grid(row=3, column=0, sticky=tk.W)
-        self.rotation_var = tk.DoubleVar(value=0.5)
-        rotation_scale = ttk.Scale(
-            self.main_frame,
-            from_=0,
-            to=3,
-            variable=self.rotation_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_rotation_change,
+    def create_checkbox(self, parent, text, var_name, row, col):
+        setattr(self, var_name, tk.BooleanVar(value=False))
+        check = ttk.Checkbutton(
+            parent,
+            text=text,
+            variable=getattr(self, var_name),
+            command=getattr(self, f"on_{var_name.lower().replace('_var', '')}_change"),
         )
-        rotation_scale.grid(row=3, column=1, sticky=(tk.W, tk.E))
-
-        # Effect Speed
-        ttk.Label(self.main_frame, text="Effect Speed:").grid(
-            row=4, column=0, sticky=tk.W
-        )
-        self.effect_speed_var = tk.DoubleVar(value=1.0)
-        effect_speed_scale = ttk.Scale(
-            self.main_frame,
-            from_=0.1,
-            to=3.0,
-            variable=self.effect_speed_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_effect_speed_change,
-        )
-        effect_speed_scale.grid(row=4, column=1, sticky=(tk.W, tk.E))
-
-        # Zoom
-        ttk.Label(self.main_frame, text="Zoom:").grid(row=5, column=0, sticky=tk.W)
-        self.zoom_var = tk.DoubleVar(value=0)
-        zoom_scale = ttk.Scale(
-            self.main_frame,
-            from_=-500,
-            to=500,
-            variable=self.zoom_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_zoom_change,
-        )
-        zoom_scale.grid(row=5, column=1, sticky=(tk.W, tk.E))
-
-        # Size Multiplier
-        ttk.Label(self.main_frame, text="Size:").grid(row=6, column=0, sticky=tk.W)
-        self.size_var = tk.DoubleVar(value=1.0)
-        size_scale = ttk.Scale(
-            self.main_frame,
-            from_=0.1,
-            to=3.0,
-            variable=self.size_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_size_change,
-        )
-        size_scale.grid(row=6, column=1, sticky=(tk.W, tk.E))
-
-        # Brightness
-        ttk.Label(self.main_frame, text="Brightness:").grid(
-            row=7, column=0, sticky=tk.W
-        )
-        self.brightness_var = tk.DoubleVar(value=1.0)
-        brightness_scale = ttk.Scale(
-            self.main_frame,
-            from_=0,
-            to=2,
-            variable=self.brightness_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_brightness_change,
-        )
-        brightness_scale.grid(row=7, column=1, sticky=(tk.W, tk.E))
-
-        # Saturation
-        ttk.Label(self.main_frame, text="Saturation:").grid(
-            row=8, column=0, sticky=tk.W
-        )
-        self.saturation_var = tk.DoubleVar(value=1.0)
-        saturation_scale = ttk.Scale(
-            self.main_frame,
-            from_=0,
-            to=2,
-            variable=self.saturation_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_saturation_change,
-        )
-        saturation_scale.grid(row=8, column=1, sticky=(tk.W, tk.E))
-
-        # RGB Shift
-        ttk.Label(self.main_frame, text="RGB Shift:").grid(row=9, column=0, sticky=tk.W)
-        self.rgbshift_var = tk.DoubleVar(value=0.0)
-        rgbshift_scale = ttk.Scale(
-            self.main_frame,
-            from_=0,
-            to=1,
-            variable=self.rgbshift_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_rgbshift_change,
-        )
-        rgbshift_scale.grid(row=9, column=1, sticky=(tk.W, tk.E))
-
-        # Noise Amount
-        ttk.Label(self.main_frame, text="Noise:").grid(row=10, column=0, sticky=tk.W)
-        self.noise_var = tk.DoubleVar(value=0.0)
-        noise_scale = ttk.Scale(
-            self.main_frame,
-            from_=0,
-            to=1,
-            variable=self.noise_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_noise_change,
-        )
-        noise_scale.grid(row=10, column=1, sticky=(tk.W, tk.E))
-
-        # Polygon Sides
-        ttk.Label(self.main_frame, text="Polygon Sides:").grid(
-            row=11, column=0, sticky=tk.W
-        )
-        self.polygon_sides_var = tk.IntVar(value=4)
-        polygon_sides_scale = ttk.Scale(
-            self.main_frame,
-            from_=3,
-            to=12,
-            variable=self.polygon_sides_var,
-            orient=tk.HORIZONTAL,
-            command=self.on_polygon_sides_change,
-        )
-        polygon_sides_scale.grid(row=11, column=1, sticky=(tk.W, tk.E))
-
-        # Checkboxes frame
-        checkbox_frame = ttk.Frame(self.main_frame)
-        checkbox_frame.grid(
-            row=12, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10
-        )
-
-        # Ghost Effect
-        self.ghost_var = tk.BooleanVar(value=False)
-        ghost_check = ttk.Checkbutton(
-            checkbox_frame,
-            text="Ghost Effect",
-            variable=self.ghost_var,
-            command=self.on_ghost_change,
-        )
-        ghost_check.grid(row=0, column=0, padx=5)
-
-        # Mouse Control
-        self.mouse_control_var = tk.BooleanVar(value=True)
-        mouse_control_check = ttk.Checkbutton(
-            checkbox_frame,
-            text="Mouse Control",
-            variable=self.mouse_control_var,
-            command=self.on_mouse_control_change,
-        )
-        mouse_control_check.grid(row=0, column=1, padx=5)
-
-        # Show Background
-        self.background_var = tk.BooleanVar(value=True)
-        background_check = ttk.Checkbutton(
-            checkbox_frame,
-            text="Show Background",
-            variable=self.background_var,
-            command=self.on_background_change,
-        )
-        background_check.grid(row=0, column=2, padx=5)
-
-        # Recording
-        self.recording_var = tk.BooleanVar(value=False)
-        recording_check = ttk.Checkbutton(
-            checkbox_frame,
-            text="Recording",
-            variable=self.recording_var,
-            command=self.on_recording_change,
-        )
-        recording_check.grid(row=0, column=3, padx=5)
-
-        # Source buttons frame
-        source_frame = ttk.Frame(self.main_frame)
-        source_frame.grid(row=13, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
-
-        # Video/Camera source buttons
-        self.source_var = tk.BooleanVar(value=True)  # True for camera, False for video
-        ttk.Button(source_frame, text="Load Video", command=self.on_load_video).grid(
-            row=0, column=0, padx=5
-        )
-        ttk.Button(source_frame, text="Use Camera", command=self.on_use_camera).grid(
-            row=0, column=1, padx=5
-        )
-
-        # Configure grid
-        for child in self.main_frame.winfo_children():
-            child.grid_configure(padx=5, pady=5)
+        check.grid(row=row, column=col, padx=10, pady=2, sticky=tk.W)
 
     def on_effect_change(self, event):
         effect_map = {

@@ -167,6 +167,13 @@ class VideoEffectsController:
         text_entry.bind("<Return>", self.on_text_change)
         text_entry.bind("<KeyRelease>", self.on_text_change)
 
+        # Add multiline text input
+        self.text_area = tk.Text(text_frame, height=4, width=30)
+        self.text_area.grid(
+            row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=5, pady=5
+        )
+        self.text_area.bind("<KeyRelease>", self.on_text_area_change)
+
         # Text Size
         self.create_slider(text_frame, "Size", "text_size_var", 12, 72, 24, 2)
 
@@ -325,7 +332,12 @@ class VideoEffectsController:
         self.source_var.set(True)
         self.osc.send_message("/source", 0)  # 0 for camera
 
+    def on_text_area_change(self, event=None):
+        text = self.text_area.get("1.0", "end-1c")  # Get text without trailing newline
+        self.osc.send_message("/text", text)
+
     def on_text_change(self, event=None):
+        # Keep this for single-line entry compatibility
         self.osc.send_message("/text", self.text_var.get())
 
     def on_text_size_change(self, value):

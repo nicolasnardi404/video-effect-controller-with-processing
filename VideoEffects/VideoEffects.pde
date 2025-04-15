@@ -641,10 +641,16 @@ void drawCurrentEffect() {
 
 void keyPressed() {
   if (key == ENTER || key == RETURN) {
-    isTyping = !isTyping;
-    if (!isTyping && typingBuffer.length() > 0) {
-      displayText = typingBuffer.toString();
-      typingBuffer.setLength(0);
+    if (isTyping) {
+      // Add a newline character when typing
+      typingBuffer.append('\n');
+    } else {
+      // Toggle typing mode
+      isTyping = !isTyping;
+      if (!isTyping && typingBuffer.length() > 0) {
+        displayText = typingBuffer.toString();
+        typingBuffer.setLength(0);
+      }
     }
     return;
   }
@@ -654,6 +660,8 @@ void keyPressed() {
       if (typingBuffer.length() > 0) {
         typingBuffer.setLength(typingBuffer.length() - 1);
       }
+    } else if (key == TAB) {
+      typingBuffer.append("    "); // 4 spaces for tab
     } else if (key >= ' ' && key <= '~') {  // Printable characters
       typingBuffer.append(key);
     }
@@ -1061,56 +1069,64 @@ void drawText() {
     
     float rainbowHue = (frameCount * 2) % 360;
     
-    // Apply movement effect
-    float moveX = width/2 + sin(frameCount * 0.05) * (5 + textGlitchAmount * 10);
-    float moveY = height/2 + cos(frameCount * 0.03) * (3 + textGlitchAmount * 8);
+    // Split text into lines
+    String[] lines = textToShow.split("\n");
+    float lineHeight = textSize * 1.2; // Add some spacing between lines
+    float totalHeight = lineHeight * lines.length;
+    float startY = height/2 - totalHeight/2; // Center all lines vertically
     
-    // Glitch effect
-    if (textGlitchAmount > 0 && frameCount % 10 < 3) {
-      moveX += random(-20, 20) * textGlitchAmount;
-      moveY += random(-10, 10) * textGlitchAmount;
-    }
-    
-    // Draw shadow/outline
-    float shadowOffset = textSize * 0.05;
-    fill(0, 0, 0, 80);
-    text(textToShow, moveX - shadowOffset, moveY - shadowOffset);
-    text(textToShow, moveX + shadowOffset, moveY - shadowOffset);
-    text(textToShow, moveX - shadowOffset, moveY + shadowOffset);
-    text(textToShow, moveX + shadowOffset, moveY + shadowOffset);
-    
-    // RGB Split effect
-    if (textRGBOffset > 0) {
-      float rgbOffset = 2 + textRGBOffset * 8;
+    for (int i = 0; i < lines.length; i++) {
+      // Apply movement effect per line
+      float moveX = width/2 + sin(frameCount * 0.05 + i * 0.2) * (5 + textGlitchAmount * 10);
+      float moveY = startY + i * lineHeight + cos(frameCount * 0.03 + i * 0.2) * (3 + textGlitchAmount * 8);
       
-      // Red channel
-      fill(0, 100, 100, 200);
-      text(textToShow, moveX - rgbOffset, moveY);
-      
-      // Blue channel
-      fill(240, 100, 100, 200);
-      text(textToShow, moveX + rgbOffset, moveY);
-      
-      // Green channel
-      fill(120, 100, 100, 200);
-      text(textToShow, moveX, moveY);
-    } else {
-      // Normal text color
-      switch(textColorMode) {
-        case 0: // White
-          fill(0, 0, 100);
-          break;
-        case 1: // Black
-          fill(0, 0, 0);
-          break;
-        case 2: // Rainbow
-          fill(rainbowHue, 80, 100);
-          break;
-        case 3: // Custom
-          fill(baseHue, saturationBase, brightnessBase);
-          break;
+      // Glitch effect
+      if (textGlitchAmount > 0 && frameCount % 10 < 3) {
+        moveX += random(-20, 20) * textGlitchAmount;
+        moveY += random(-10, 10) * textGlitchAmount;
       }
-      text(textToShow, moveX, moveY);
+      
+      // Draw shadow/outline
+      float shadowOffset = textSize * 0.05;
+      fill(0, 0, 0, 80);
+      text(lines[i], moveX - shadowOffset, moveY - shadowOffset);
+      text(lines[i], moveX + shadowOffset, moveY - shadowOffset);
+      text(lines[i], moveX - shadowOffset, moveY + shadowOffset);
+      text(lines[i], moveX + shadowOffset, moveY + shadowOffset);
+      
+      // RGB Split effect
+      if (textRGBOffset > 0) {
+        float rgbOffset = 2 + textRGBOffset * 8;
+        
+        // Red channel
+        fill(0, 100, 100, 200);
+        text(lines[i], moveX - rgbOffset, moveY);
+        
+        // Blue channel
+        fill(240, 100, 100, 200);
+        text(lines[i], moveX + rgbOffset, moveY);
+        
+        // Green channel
+        fill(120, 100, 100, 200);
+        text(lines[i], moveX, moveY);
+      } else {
+        // Normal text color
+        switch(textColorMode) {
+          case 0: // White
+            fill(0, 0, 100);
+            break;
+          case 1: // Black
+            fill(0, 0, 0);
+            break;
+          case 2: // Rainbow
+            fill(rainbowHue + i * 30, 80, 100); // Slightly different hue per line
+            break;
+          case 3: // Custom
+            fill(baseHue, saturationBase, brightnessBase);
+            break;
+        }
+        text(lines[i], moveX, moveY);
+      }
     }
     
     // Glitch blocks (random rectangles) when glitch effect is active

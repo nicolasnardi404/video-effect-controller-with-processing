@@ -154,9 +154,44 @@ class VideoEffectsController:
         self.create_checkbox(check_frame, "🎦 BG", "background_var", 1, 0)
         self.create_checkbox(check_frame, "⏺️ REC", "recording_var", 1, 1)
 
+        # Text Controls Frame
+        text_frame = ttk.Frame(additional_frame)
+        text_frame.grid(row=2, column=0, pady=5, sticky=(tk.W, tk.E))
+        text_frame.columnconfigure(1, weight=1)
+
+        # Text Input
+        ttk.Label(text_frame, text="Text:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        self.text_var = tk.StringVar(value="")
+        text_entry = ttk.Entry(text_frame, textvariable=self.text_var)
+        text_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
+        text_entry.bind("<Return>", self.on_text_change)
+        text_entry.bind("<KeyRelease>", self.on_text_change)
+
+        # Text Size
+        self.create_slider(text_frame, "Size", "text_size_var", 12, 72, 24, 2)
+
+        # Text Effects Frame
+        effects_frame = ttk.Frame(text_frame)
+        effects_frame.grid(row=3, column=0, columnspan=2, pady=5, sticky=(tk.W, tk.E))
+        effects_frame.columnconfigure((0, 1), weight=1)
+
+        # Text Color
+        ttk.Label(text_frame, text="Color:").grid(row=4, column=0, sticky=tk.W, padx=5)
+        self.text_color_var = tk.StringVar(value="White")
+        text_colors = ttk.Combobox(
+            text_frame, textvariable=self.text_color_var, width=20
+        )
+        text_colors["values"] = ("White", "Black", "Rainbow", "Custom")
+        text_colors.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=5)
+        text_colors.bind("<<ComboboxSelected>>", self.on_text_color_change)
+
+        # Text Effects
+        self.create_slider(text_frame, "Glitch", "text_glitch_var", 0, 1.0, 0, 5)
+        self.create_slider(text_frame, "RGB Split", "text_rgb_var", 0, 1.0, 0, 6)
+
         # Background Stage Controls
         bg_frame = ttk.Frame(additional_frame)
-        bg_frame.grid(row=1, column=0, pady=5, sticky=(tk.W, tk.E))
+        bg_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
 
         ttk.Label(bg_frame, text="Background Stage:").grid(
             row=0, column=0, sticky=tk.W, padx=5
@@ -289,3 +324,25 @@ class VideoEffectsController:
     def on_use_camera(self):
         self.source_var.set(True)
         self.osc.send_message("/source", 0)  # 0 for camera
+
+    def on_text_change(self, event=None):
+        self.osc.send_message("/text", self.text_var.get())
+
+    def on_text_size_change(self, value):
+        self.osc.send_message("/text_size", float(value))
+
+    def on_text_color_change(self, event):
+        color_map = {
+            "White": 0,
+            "Black": 1,
+            "Rainbow": 2,
+            "Custom": 3,
+        }
+        color_value = color_map[self.text_color_var.get()]
+        self.osc.send_message("/text_color", color_value)
+
+    def on_text_glitch_change(self, value):
+        self.osc.send_message("/text_glitch", float(value))
+
+    def on_text_rgb_change(self, value):
+        self.osc.send_message("/text_rgb", float(value))

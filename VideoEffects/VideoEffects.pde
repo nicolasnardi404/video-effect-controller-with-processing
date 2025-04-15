@@ -70,10 +70,27 @@ PGraphics recordBuffer;
 // Add after other global variables
 int backgroundStage = 0; // 0: Normal, 1: B&W, 2: Edge Detection, 3: Saturation Explosion, 4: Psychedelic
 
+// Text variables
+String displayText = "";
+float textSize = 24;
+int textColorMode = 0; // 0: White, 1: Black, 2: Rainbow, 3: Custom
+PFont font;
+
+// Add these variables with other global variables at the top
+boolean isTyping = false;
+StringBuilder typingBuffer = new StringBuilder();
+float textGlitchAmount = 0.0;
+float textRGBOffset = 0.0;
+
 void setup() {
   size(800, 600, P3D);
   colorMode(HSB, 360, 100, 100);
   frameRate(frameRate);
+  
+  // Initialize font
+  font = createFont("Arial", 32);
+  textFont(font);
+  textAlign(CENTER, CENTER);
   
   // Initialize OSC
   oscP5 = new OscP5(this, 12000);
@@ -485,6 +502,9 @@ void draw() {
   updateCamera();
   drawCurrentEffect();
   
+  // Draw text overlay last
+  drawText();
+  
   // Handle recording
   if (isRecording) {
     loadPixels(); // Make sure pixels are updated
@@ -620,13 +640,30 @@ void drawCurrentEffect() {
 }
 
 void keyPressed() {
+  if (key == ENTER || key == RETURN) {
+    isTyping = !isTyping;
+    if (!isTyping && typingBuffer.length() > 0) {
+      displayText = typingBuffer.toString();
+      typingBuffer.setLength(0);
+    }
+    return;
+  }
+  
+  if (isTyping) {
+    if (key == BACKSPACE) {
+      if (typingBuffer.length() > 0) {
+        typingBuffer.setLength(typingBuffer.length() - 1);
+      }
+    } else if (key >= ' ' && key <= '~') {  // Printable characters
+      typingBuffer.append(key);
+    }
+    return;
+  }
+
+  // Existing key handlers
   switch(key) {
     case ' ':
       currentEffect = (currentEffect + 1) % 9;
-      break;
-    case 'g':
-    case 'G':
-      ghostEffect = !ghostEffect;
       break;
     case 'z':
     case 'Z':
@@ -684,6 +721,16 @@ void keyPressed() {
     case ']':
       effectSpeed = constrain(effectSpeed + 0.1, 0.1, 3.0);
       println("Effect speed: " + nf(effectSpeed, 1, 1));
+      break;
+    case 't':
+    case 'T':
+      textGlitchAmount = (textGlitchAmount + 0.2) % 1.0;
+      println("Text glitch amount: " + nf(textGlitchAmount, 0, 1));
+      break;
+    case 'y':
+    case 'Y':
+      textRGBOffset = (textRGBOffset + 0.2) % 1.0;
+      println("Text RGB offset: " + nf(textRGBOffset, 0, 1));
       break;
     case 'r':
     case 'R':
@@ -865,6 +912,21 @@ void oscEvent(OscMessage msg) {
       backgroundStage = msg.get(0).intValue();
       println("Background stage changed to: " + backgroundStage);
       break;
+    case "/text":
+      displayText = msg.get(0).stringValue();
+      break;
+    case "/text_size":
+      textSize = msg.get(0).floatValue();
+      break;
+    case "/text_color":
+      textColorMode = msg.get(0).intValue();
+      break;
+    case "/text_glitch":
+      textGlitchAmount = msg.get(0).floatValue();
+      break;
+    case "/text_rgb":
+      textRGBOffset = msg.get(0).floatValue();
+      break;
   }
 }
 
@@ -981,4 +1043,91 @@ void drawPolygonEffect() {
   
   popMatrix();
   popMatrix();
+}
+
+// Replace the drawText function with this enhanced version
+void drawText() {
+  String textToShow = isTyping ? typingBuffer.toString() + (frameCount % 30 < 15 ? "_" : "") : displayText;
+  
+  if (textToShow.length() > 0) {
+    pushStyle();
+    pushMatrix();
+    
+    camera();
+    hint(DISABLE_DEPTH_TEST);
+    
+    textAlign(CENTER, CENTER);
+    textSize(textSize);
+    
+    float rainbowHue = (frameCount * 2) % 360;
+    
+    // Apply movement effect
+    float moveX = width/2 + sin(frameCount * 0.05) * (5 + textGlitchAmount * 10);
+    float moveY = height/2 + cos(frameCount * 0.03) * (3 + textGlitchAmount * 8);
+    
+    // Glitch effect
+    if (textGlitchAmount > 0 && frameCount % 10 < 3) {
+      moveX += random(-20, 20) * textGlitchAmount;
+      moveY += random(-10, 10) * textGlitchAmount;
+    }
+    
+    // Draw shadow/outline
+    float shadowOffset = textSize * 0.05;
+    fill(0, 0, 0, 80);
+    text(textToShow, moveX - shadowOffset, moveY - shadowOffset);
+    text(textToShow, moveX + shadowOffset, moveY - shadowOffset);
+    text(textToShow, moveX - shadowOffset, moveY + shadowOffset);
+    text(textToShow, moveX + shadowOffset, moveY + shadowOffset);
+    
+    // RGB Split effect
+    if (textRGBOffset > 0) {
+      float rgbOffset = 2 + textRGBOffset * 8;
+      
+      // Red channel
+      fill(0, 100, 100, 200);
+      text(textToShow, moveX - rgbOffset, moveY);
+      
+      // Blue channel
+      fill(240, 100, 100, 200);
+      text(textToShow, moveX + rgbOffset, moveY);
+      
+      // Green channel
+      fill(120, 100, 100, 200);
+      text(textToShow, moveX, moveY);
+    } else {
+      // Normal text color
+      switch(textColorMode) {
+        case 0: // White
+          fill(0, 0, 100);
+          break;
+        case 1: // Black
+          fill(0, 0, 0);
+          break;
+        case 2: // Rainbow
+          fill(rainbowHue, 80, 100);
+          break;
+        case 3: // Custom
+          fill(baseHue, saturationBase, brightnessBase);
+          break;
+      }
+      text(textToShow, moveX, moveY);
+    }
+    
+    // Glitch blocks (random rectangles) when glitch effect is active
+    if (textGlitchAmount > 0 && frameCount % 15 < 2) {
+      for (int i = 0; i < 5; i++) {
+        float x = random(width * 0.3, width * 0.7);
+        float y = random(height * 0.3, height * 0.7);
+        float w = random(20, 100) * textGlitchAmount;
+        float h = random(2, 10) * textGlitchAmount;
+        fill(random(360), 80, 100, 150);
+        noStroke();
+        rect(x, y, w, h);
+      }
+    }
+    
+    hint(ENABLE_DEPTH_TEST);
+    popMatrix();
+    popStyle();
+  }
 }

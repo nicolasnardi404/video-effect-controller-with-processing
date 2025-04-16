@@ -15,6 +15,28 @@ class IntegratedLauncher:
         self.root.title("Video Effects Suite")
         self.processing_process = None
 
+        # Set up macOS application properties
+        if platform.system() == "Darwin":
+            # This tells macOS to use Python.app's icon and identity
+            os.environ["PYTHONEXECUTABLE"] = (
+                "/Applications/Python 3.12/IDLE.app/Contents/MacOS/Python"
+            )
+            self.root.createcommand("::tk::mac::OpenDocument", self.open_file)
+            self.root.createcommand("::tk::mac::ShowPreferences", self.show_preferences)
+            self.root.createcommand("::tk::mac::ReopenApplication", self.reopen)
+            self.root.createcommand("::tk::mac::Quit", self.on_closing)
+
+            # Set the process name to Python
+            try:
+                import Foundation
+                import AppKit
+
+                bundle = Foundation.NSBundle.mainBundle()
+                info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
+                info["CFBundleName"] = "Python"
+            except:
+                pass
+
         # Configure main window
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -157,6 +179,15 @@ class IntegratedLauncher:
         """Handle window closing"""
         self.stop_all()
         self.root.destroy()
+
+    def open_file(self, *args):
+        pass
+
+    def show_preferences(self):
+        pass
+
+    def reopen(self):
+        self.root.deiconify()
 
     def run(self):
         """Start the application"""

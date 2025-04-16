@@ -122,47 +122,60 @@
 
 ### Installation Steps
 
-1. **Clone the Repository**
-   ```bash
-   # Clone the project
-   git clone https://github.com/yourusername/processing-video-maker.git
-   cd processing-video-maker
-   ```
+1. **Install Prerequisites**
+   - Install Processing 4.0+ from [processing.org/download](https://processing.org/download)
+   - Install Python 3.8+ from [python.org/downloads](https://www.python.org/downloads/)
+     > ⚠️ Important: On macOS, make sure to install Python Launcher (the one with the rocket 🚀 icon)
 
-2. **Set Up Python Environment**
-   ```bash
-   # Create virtual environment
-   python -m venv .venv
-
-   # Activate virtual environment
-   # On Windows:
-   .venv\Scripts\activate
-   # On macOS/Linux:
-   source .venv/bin/activate
-
-   # If you don't have pip installed
-   python -m ensurepip --upgrade
-
-   # Install required packages
-   pip install -r requirements.txt
-   ```
-
-3. **Install Processing Libraries**
+2. **Install Processing Libraries**
    - Open Processing
    - Go to `Sketch > Import Library > Add Library`
    - Search and install:
      - `Video Library` for camera and video handling
      - `Video Export` for recording capabilities
      - `OscP5` for communication with Python
+     - `NetP5` (installed automatically with OscP5)
 
-4. **Launch Application**
+3. **Set Up Python Environment**
    ```bash
-   # Make sure your virtual environment is activated
-   # Then run the launcher:
-   python python/launcher.py
+   # Clone the repository
+   git clone https://github.com/nicolasnardi404/video-effect-controller-with-processing.git
+   cd video-effect-controller-with-processing
+
+   # Create and activate virtual environment, then install dependencies
+   python -m venv .venv
+   source .venv/bin/activate  # On macOS/Linux
+   # or .venv\Scripts\activate  # On Windows
+   pip install -r requirements.txt
+
+   # Run the application (on macOS)
+   ./python/run_with_rocket.command
    ```
 
+   Or as a single command on macOS:
+   ```bash
+   git clone https://github.com/nicolasnardi404/video-effect-controller-with-processing.git && cd video-effect-controller-with-processing && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && chmod +x python/run_with_rocket.command && ./python/run_with_rocket.command
+   ```
+
+4. **Launch Application**
+   > 🚨 Important: Always use the provided launch script to ensure proper setup and the Python rocket icon
+   
+   **On macOS:**
+   ```bash
+   # From the project root directory:
+   ./python/run_with_rocket.command
+   ```
+   Or simply double-click `run_with_rocket.command` in Finder
+   
+   ❌ Avoid running directly with `python launcher.py` as it will use the wrong application icon
+
+   **On Windows:**
+   - Double-click `launcher.py` (make sure it's associated with Python)
+   - Or run from command prompt: `python launcher.py`
+
    The launcher will automatically:
+   - Activate the virtual environment
+   - Use the correct Python version (with rocket icon)
    - Find your Processing installation
    - Start the Processing sketch
    - Launch the control interface
@@ -171,12 +184,12 @@
 
 ### Troubleshooting
 
+- **Wrong Application Icon**: If you see a feather icon instead of the Python rocket, you're running with Tkinter directly. Use Python Launcher instead.
 - **Processing Not Found**: Make sure Processing is installed in the default location
 - **Python Error**: Ensure you're using Python 3.8 or newer (`python --version`)
 - **Missing Libraries**: Double-check all Processing libraries are installed
 - **OSC Error**: Check if port 12000 is available on your system
 - **Virtual Environment**: If you get module not found errors, ensure your virtual environment is activated
-- **Git Issues**: Make sure you have git installed (`git --version`)
 
 ---
 

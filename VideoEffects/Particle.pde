@@ -57,7 +57,7 @@ void drawParticleEffect() {
   
   for (Particle3D p : particles) {
     p.update();
-    p.display(cam);
+    p.display(currentFrame);
   }
   popMatrix();
 } 

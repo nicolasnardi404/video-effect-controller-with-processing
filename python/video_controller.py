@@ -12,9 +12,11 @@ class VideoEffectsController:
         style.configure("Title.TLabel", font=("Helvetica", 12, "bold"))
         style.configure("Section.TLabelframe", padding=10)
         style.configure("Section.TLabelframe.Label", font=("Helvetica", 10, "bold"))
+        style.configure("Compact.TLabelframe", padding=5)
+        style.configure("Compact.TLabelframe.Label", font=("Helvetica", 9, "bold"))
 
         # Create main frame with padding
-        self.main_frame = ttk.Frame(parent, padding="20")
+        self.main_frame = ttk.Frame(parent, padding="10")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         # Configure grid columns to expand properly
@@ -24,50 +26,53 @@ class VideoEffectsController:
         # Initialize OSC client
         self.osc = SimpleUDPClient("127.0.0.1", 12000)
 
-        # Create sections - now in two columns
-        self.create_source_controls()  # Full width at top
+        # Create sections in a more compact layout
+        self.create_source_controls()
 
-        # Left column
-        self.create_effect_controls(column=0)
-        self.create_motion_controls(column=0)
+        # Create two main columns
+        left_column = ttk.Frame(self.main_frame)
+        left_column.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), padx=5)
+        left_column.columnconfigure(0, weight=1)
 
-        # Right column
-        self.create_color_controls(column=1)
-        self.create_additional_controls(column=1)
+        right_column = ttk.Frame(self.main_frame)
+        right_column.grid(row=1, column=1, sticky=(tk.N, tk.S, tk.E, tk.W), padx=5)
+        right_column.columnconfigure(0, weight=1)
+
+        # Left column contents
+        self.create_effect_controls(left_column)
+        self.create_motion_controls(left_column)
+
+        # Right column contents
+        self.create_color_controls(right_column)
+        self.create_additional_controls(right_column)
 
     def create_source_controls(self):
-        # Source Control Section - full width
+        # Source Control Section - more compact
         source_frame = ttk.LabelFrame(
-            self.main_frame, text="Source", style="Section.TLabelframe"
+            self.main_frame, text="Source", style="Compact.TLabelframe"
         )
         source_frame.grid(
-            row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10), padx=5
+            row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 5), padx=5
         )
 
-        # Source buttons with modern styling
-        btn_frame = ttk.Frame(source_frame)
-        btn_frame.grid(row=0, column=0, pady=5)
-
+        # Source buttons in a more compact layout
         self.source_var = tk.BooleanVar(value=True)
-        ttk.Button(btn_frame, text="📹 Use Camera", command=self.on_use_camera).grid(
-            row=0, column=0, padx=5
+        ttk.Button(source_frame, text="📹 Use Camera", command=self.on_use_camera).pack(
+            side=tk.LEFT, padx=5, pady=2
         )
-        ttk.Button(btn_frame, text="🎬 Load Video", command=self.on_load_video).grid(
-            row=0, column=1, padx=5
+        ttk.Button(source_frame, text="🎬 Load Video", command=self.on_load_video).pack(
+            side=tk.LEFT, padx=5, pady=2
         )
 
-    def create_effect_controls(self, column):
-        # Effect Control Section
+    def create_effect_controls(self, parent):
         effect_frame = ttk.LabelFrame(
-            self.main_frame, text="Effect", style="Section.TLabelframe"
+            parent, text="Effect", style="Section.TLabelframe"
         )
-        effect_frame.grid(
-            row=1, column=column, sticky=(tk.W, tk.E, tk.N), pady=5, padx=5
-        )
+        effect_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=5)
         effect_frame.columnconfigure(1, weight=1)
 
-        # Effect selector with modern styling
-        ttk.Label(effect_frame, text="Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        # Effect selector
+        ttk.Label(effect_frame, text="Type:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.effect_var = tk.StringVar(value="Tunnel")
         effects = ttk.Combobox(effect_frame, textvariable=self.effect_var, width=20)
         effects["values"] = (
@@ -91,18 +96,13 @@ class VideoEffectsController:
             effect_frame, "Polygon Sides", "polygon_sides_var", 3, 12, 4, 3
         )
 
-    def create_color_controls(self, column):
-        # Color Control Section
-        color_frame = ttk.LabelFrame(
-            self.main_frame, text="Color", style="Section.TLabelframe"
-        )
-        color_frame.grid(
-            row=1, column=column, sticky=(tk.W, tk.E, tk.N), pady=5, padx=5
-        )
+    def create_color_controls(self, parent):
+        color_frame = ttk.LabelFrame(parent, text="Color", style="Section.TLabelframe")
+        color_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=5)
         color_frame.columnconfigure(1, weight=1)
 
         # Color mode selector
-        ttk.Label(color_frame, text="Mode:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(color_frame, text="Mode:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.color_mode_var = tk.StringVar(value="Rainbow")
         color_modes = ttk.Combobox(
             color_frame, textvariable=self.color_mode_var, width=20
@@ -124,84 +124,73 @@ class VideoEffectsController:
         self.create_slider(color_frame, "RGB Shift", "rgbshift_var", 0, 1, 0.0, 4)
         self.create_slider(color_frame, "Noise", "noise_var", 0, 1, 0.0, 5)
 
-    def create_motion_controls(self, column):
-        # Motion Control Section
+    def create_motion_controls(self, parent):
         motion_frame = ttk.LabelFrame(
-            self.main_frame, text="Motion", style="Section.TLabelframe"
+            parent, text="Motion", style="Section.TLabelframe"
         )
-        motion_frame.grid(row=2, column=column, sticky=(tk.W, tk.E), pady=5, padx=5)
+        motion_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
         motion_frame.columnconfigure(1, weight=1)
 
-        # Motion parameters
         self.create_slider(motion_frame, "Rotation", "rotation_var", 0, 3, 0.5, 0)
         self.create_slider(motion_frame, "Zoom", "zoom_var", -500, 500, 0, 1)
 
-    def create_additional_controls(self, column):
-        # Additional Controls Section
+    def create_additional_controls(self, parent):
         additional_frame = ttk.LabelFrame(
-            self.main_frame, text="Options", style="Section.TLabelframe"
+            parent, text="Options", style="Section.TLabelframe"
         )
-        additional_frame.grid(row=2, column=column, sticky=(tk.W, tk.E), pady=5, padx=5)
+        additional_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        additional_frame.columnconfigure(0, weight=1)
 
-        # Create a grid for checkboxes
+        # Checkboxes in a more compact 2x2 grid
         check_frame = ttk.Frame(additional_frame)
-        check_frame.grid(row=0, column=0, pady=5)
+        check_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=2)
         check_frame.columnconfigure((0, 1), weight=1)
 
-        # Checkboxes with icons in a 2x2 grid
         self.create_checkbox(check_frame, "👻 Ghost", "ghost_var", 0, 0)
         self.create_checkbox(check_frame, "🖱️ Mouse", "mouse_control_var", 0, 1)
         self.create_checkbox(check_frame, "🎦 BG", "background_var", 1, 0)
         self.create_checkbox(check_frame, "⏺️ REC", "recording_var", 1, 1)
 
-        # Text Controls Frame
+        # Text controls
         text_frame = ttk.Frame(additional_frame)
-        text_frame.grid(row=2, column=0, pady=5, sticky=(tk.W, tk.E))
+        text_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=2)
         text_frame.columnconfigure(1, weight=1)
 
-        # Text Input
-        ttk.Label(text_frame, text="Text:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        ttk.Label(text_frame, text="Text:").grid(row=0, column=0, sticky=tk.W, padx=2)
         self.text_var = tk.StringVar(value="")
         text_entry = ttk.Entry(text_frame, textvariable=self.text_var)
-        text_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
+        text_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=2)
         text_entry.bind("<Return>", self.on_text_change)
         text_entry.bind("<KeyRelease>", self.on_text_change)
 
-        # Add multiline text input
-        self.text_area = tk.Text(text_frame, height=4, width=30)
+        self.text_area = tk.Text(text_frame, height=3, width=30)
         self.text_area.grid(
-            row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=5, pady=5
+            row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=2, pady=2
         )
         self.text_area.bind("<KeyRelease>", self.on_text_area_change)
 
-        # Text Size
+        # Text appearance controls
         self.create_slider(text_frame, "Size", "text_size_var", 12, 72, 24, 2)
 
-        # Text Effects Frame
-        effects_frame = ttk.Frame(text_frame)
-        effects_frame.grid(row=3, column=0, columnspan=2, pady=5, sticky=(tk.W, tk.E))
-        effects_frame.columnconfigure((0, 1), weight=1)
-
-        # Text Color
-        ttk.Label(text_frame, text="Color:").grid(row=4, column=0, sticky=tk.W, padx=5)
+        ttk.Label(text_frame, text="Color:").grid(row=3, column=0, sticky=tk.W, padx=2)
         self.text_color_var = tk.StringVar(value="White")
         text_colors = ttk.Combobox(
             text_frame, textvariable=self.text_color_var, width=20
         )
         text_colors["values"] = ("White", "Black", "Rainbow", "Custom")
-        text_colors.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=5)
+        text_colors.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=2)
         text_colors.bind("<<ComboboxSelected>>", self.on_text_color_change)
 
-        # Text Effects
-        self.create_slider(text_frame, "Glitch", "text_glitch_var", 0, 1.0, 0, 5)
-        self.create_slider(text_frame, "RGB Split", "text_rgb_var", 0, 1.0, 0, 6)
+        self.create_slider(text_frame, "Glitch", "text_glitch_var", 0, 1.0, 0, 4)
+        self.create_slider(text_frame, "RGB Split", "text_rgb_var", 0, 1.0, 0, 5)
 
-        # Background Stage Controls
+        # Background stage
         bg_frame = ttk.Frame(additional_frame)
-        bg_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
+        bg_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=2)
+        bg_frame.columnconfigure(1, weight=1)
 
         ttk.Label(bg_frame, text="Background Stage:").grid(
-            row=0, column=0, sticky=tk.W, padx=5
+            row=0, column=0, sticky=tk.W, padx=2
         )
         self.bg_stage_var = tk.StringVar(value="Normal")
         bg_stages = ttk.Combobox(bg_frame, textvariable=self.bg_stage_var, width=20)
@@ -212,7 +201,7 @@ class VideoEffectsController:
             "Color Explosion",
             "Psychedelic Mirror",
         )
-        bg_stages.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
+        bg_stages.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=2)
         bg_stages.bind("<<ComboboxSelected>>", self.on_bg_stage_change)
 
     def create_slider(

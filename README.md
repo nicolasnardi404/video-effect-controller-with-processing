@@ -99,29 +99,66 @@
 
 ## 🚀 Quick Start
 
-1. **Install Dependencies**
-```bash
-pip install -r requirements.txt
-```
+### Prerequisites
 
-2. **Install Processing Libraries**
-- Video Library
-- Video Export
-- OscP5
-- NetP5
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">🎨</td>
+      <td>
+        <strong>Processing 4.0+</strong><br/>
+        <a href="https://processing.org/download">Download Processing</a><br/>
+        The visual programming environment for creating graphics
+      </td>
+      <td align="center">🐍</td>
+      <td>
+        <strong>Python 3.8+</strong><br/>
+        <a href="https://www.python.org/downloads/">Download Python</a><br/>
+        Required for running the control interface
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Installation Steps
+
+1. **Install Processing Libraries**
+   - Open Processing
+   - Go to `Sketch > Import Library > Add Library`
+   - Search and install:
+     - `Video Library` for camera and video handling
+     - `Video Export` for recording capabilities
+     - `OscP5` for communication with Python
+     - `NetP5` (installed automatically with OscP5)
+
+2. **Install Python Dependencies**
+   ```bash
+   # If you don't have pip installed
+   python -m ensurepip --upgrade
+
+   # Install required packages
+   pip install -r requirements.txt
+   ```
 
 3. **Launch Application**
-```bash
-# Simply run the launcher:
-python python/launcher.py
-```
+   ```bash
+   # Simply run the launcher:
+   python python/launcher.py
+   ```
 
-The launcher will automatically:
-- Find your Processing installation
-- Start the Processing sketch
-- Launch the control interface
-- Provide status monitoring
-- Handle proper shutdown
+   The launcher will automatically:
+   - Find your Processing installation
+   - Start the Processing sketch
+   - Launch the control interface
+   - Provide status monitoring
+   - Handle proper shutdown
+
+### Troubleshooting
+
+- **Processing Not Found**: Make sure Processing is installed in the default location
+- **Python Error**: Ensure you're using Python 3.8 or newer (`python --version`)
+- **Missing Libraries**: Double-check all Processing libraries are installed
+- **OSC Error**: Check if port 12000 is available on your system
 
 ---
 

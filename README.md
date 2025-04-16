@@ -112,12 +112,16 @@ pip install -r requirements.txt
 
 3. **Launch Application**
 ```bash
-# First, open and run in Processing:
-VideoEffects/VideoEffects.pde
-
-# Then run the Python controller:
-python python/main.py
+# Simply run the launcher:
+python python/launcher.py
 ```
+
+The launcher will automatically:
+- Find your Processing installation
+- Start the Processing sketch
+- Launch the control interface
+- Provide status monitoring
+- Handle proper shutdown
 
 ---
 

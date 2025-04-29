@@ -143,7 +143,7 @@
    cd video-effect-controller-with-processing
 
    # Create and activate virtual environment, then install dependencies
-   python -m venv .venv
+   python -m venv .venv or  python3 -m venv .venv
    source .venv/bin/activate  # On macOS/Linux
    # or .venv\Scripts\activate  # On Windows
    pip install -r requirements.txt

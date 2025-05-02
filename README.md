@@ -12,6 +12,18 @@
 
 ---
 
+## 🎥 Demo
+
+Watch how the Video Effects Controller works in action:
+
+<div align="center">
+  
+[![Video Effects Controller Demo](https://img.youtube.com/vi/M0kqYbKSim4/0.jpg)](https://www.youtube.com/watch?v=M0kqYbKSim4)
+
+</div>
+
+---
+
 ## ✨ Features
 
 <div align="center">
